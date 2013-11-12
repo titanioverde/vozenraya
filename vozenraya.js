@@ -7,6 +7,19 @@ var dictB = ["b", "be"];
 var dictC = ["c", "ce"];
 
 var dictRows = [dict1, dict2, dict3];
+var dictColumns = [dictA, dictB, dictC];
+
+var dictStart = ["comenzar"];
+var dictHuman = ["humano"];
+var dictCPU = ["ordenador"];
+
+var dictMainMenu = [dictStart, dictHuman, dictCPU];
+
+var dictCheck = ["revisar"];
+var dictPut = ["colocar"];
+var dictGiveUp = ["abandonar"];
+
+var dictPlayMenu = [dictCheck, dictPut, dictGiveUp];
 
 var Board = function (Chip) {
 	this.Chip = Chip || "W";
@@ -17,6 +30,8 @@ var Board = function (Chip) {
 		this.Color = "Blacks";
 	}
 	this.Squares = [["X", "X", "X"], ["X", "X", "X"], ["X", "X", "X"]];
+	
+	parentThis = this;
 	
 	this.voiceReceiver = new webkitSpeechRecognition();
 	this.voiceReceiver.lang = "es-ES";
@@ -167,9 +182,31 @@ var Board = function (Chip) {
 	}
 	
 	this.turnFlowWithVoice = function(sample) {
+		this.voiceReceiver.start();
 		var Target = this.recognizePosition(sample);
 		this.basicTurnFlow(Target);
 		console.log(this.showBoard());
+	}
+
+	this.turnFlowWithVoiceAuto = function() {
+		var anotherVoice = new webkitSpeechRecognition();
+		anotherVoice.lang = "es-ES";
+		anotherVoice.onresult = function (event) {
+			if (event.results.length > 0) {
+				phrase1 = event.results[0][0].transcript;
+				Target1 = parentThis.recognizePosition(phrase1);
+				parentThis.basicTurnFlow(Target1);
+				console.log(parentThis.showBoard());
+			}
+		}
+		anotherVoice.start();
+			
+		
+	}
+	
+	this.mainMenu = function() {
+		var words = dictMainMenu;
+		//Mostrar descripción y opciones disponibles y esperar respuesta.
 	}
 	
 	this.startGame = function () {
