@@ -190,6 +190,7 @@ var Board = function (Chip) {
 
 	this.turnFlowWithVoiceAuto = function() {
 		var anotherVoice = new webkitSpeechRecognition();
+		var micBusy = false;
 		anotherVoice.lang = "es-ES";
 		anotherVoice.onresult = function (event) {
 			if (event.results.length > 0) {
@@ -197,9 +198,18 @@ var Board = function (Chip) {
 				Target1 = parentThis.recognizePosition(phrase1);
 				parentThis.basicTurnFlow(Target1);
 				console.log(parentThis.showBoard());
+				micBusy = false;
 			}
 		}
-		anotherVoice.start();
+		var waitPlease = setInterval(function () {
+				if (micBusy == false) {
+					micBusy = true;
+					anotherVoice.start();
+				}
+			}, 100);
+		//Chromium detiene el bucle cuando no detecta voz durante unos segundos.
+		
+		
 			
 		
 	}
