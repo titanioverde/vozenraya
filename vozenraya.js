@@ -21,6 +21,7 @@ var dictGiveUp = ["abandonar"];
 
 var dictPlayMenu = [dictCheck, dictPut, dictGiveUp];
 
+
 var Board = function (Chip) {
 	this.Chip = Chip || "W";
 	if (Chip == "W") {
@@ -31,8 +32,18 @@ var Board = function (Chip) {
 	}
 	this.Squares = [["X", "X", "X"], ["X", "X", "X"], ["X", "X", "X"]];
 	
-	parentThis = this;
+	parentThis = this; //Never forget the main object.
 	
+	this.VoicePath = "voice_es-ES/";
+	this.Voice = {
+		"row1": new Audio(this.VoicePath + "row1.ogg"),
+		"row2": new Audio(this.VoicePath + "row2.ogg"),
+		"row3": new Audio(this.VoicePath + "row3.ogg"),
+		"X": new Audio(this.VoicePath + "empty.ogg"),
+		"W": new Audio(this.VoicePath + "white.ogg"),
+		"B": new Audio(this.VoicePath + "black.ogg")
+	}
+
 	this.voiceReceiver = new webkitSpeechRecognition();
 	this.voiceReceiver.lang = "es-ES";
 	this.voiceReceiver.onresult = function (event) {
@@ -61,6 +72,33 @@ var Board = function (Chip) {
 		}
 		console.log(results.toString());
 		return (results);
+	}
+	
+	this.readBoard = function() {
+		this.speakSquare(0, 0);
+	}
+	
+	
+	this.speakSquare = function(row, column) {
+		var Squares = this.Squares;
+		var currentVoice = this.Voice[Squares[row][column]];
+		currentVoice.play();
+		
+		//Select the next square.
+		column += 1;
+		if (column >= Squares[0].length) {
+			column = 0;
+			row += 1;
+		}
+		if (row < Squares.length) {
+			//Speak the next square when the current one is done.
+			var thisVoice = setInterval(function () {
+				if (currentVoice.paused) {
+					parentThis.speakSquare(row, column);
+					clearInterval(thisVoice);
+				}
+			}, 50);
+		}
 	}
 	
 	this.emptyBoard = function () {
