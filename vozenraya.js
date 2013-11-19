@@ -75,35 +75,66 @@ var Board = function (Chip) {
 	}
 	
 	this.readBoard = function() {
-		this.speakSquare(0, 0);
+		var queue = [];
+		var Squares = this.Squares;
+		for (var i in Squares) {
+			var currentRow = parseInt(i) + 1;
+			queue.push(this.Voice["row" + String(currentRow)]);
+			for (var j in Squares[i]) {
+				queue.push(this.Voice[Squares[i][j]]);
+			}
+		}
+		this.audioQueue(queue);
+		//this.speakSquare(0, 0);
 	}
 	
 	
-	this.speakSquare = function(row, column) {
-		var Squares = this.Squares;
-		var currentVoice = this.Voice[Squares[row][column]];
-		currentVoice.play();
-		
-		//Select the next square.
-		column += 1;
-		if (column >= Squares[0].length) {
-			column = 0;
-			row += 1;
-		}
-		if (row < Squares.length) {
-			//Speak the next square when the current one is done.
-			var thisVoice = setInterval(function () {
-				if (currentVoice.paused) {
-					parentThis.speakSquare(row, column);
-					clearInterval(thisVoice);
+	//this.speakSquare = function(row, column) {
+	//	var Squares = this.Squares;
+	//	var currentVoice = this.Voice[Squares[row][column]];
+	//	currentVoice.play();
+	//	
+	//	//Select the next square.
+	//	column += 1;
+	//	if (column >= Squares[0].length) {
+	//		column = 0;
+	//		row += 1;
+	//	}
+	//	if (row < Squares.length) {
+	//		//Speak the next square when the current one is done.
+	//		var waitPlease = setInterval(function () {
+	//			if (currentVoice.paused) {
+	//				parentThis.speakSquare(row, column);
+	//				clearInterval(waitPlease);
+	//			}
+	//		}, 50);
+	//	}
+	//}
+	
+	//It receives an array of Audio objects and plays them one by one.
+	//Necessary due to Javascript's asyncronous nature.
+	//This method was strongly inspired on: http://stackoverflow.com/a/7701368/990228
+	this.audioQueue = function(queue) {
+		var i = 0;
+		var playNow = function(audio) {
+			audio.play();
+			i += 1;
+			var waitPlease = setInterval(function() {
+				if (i < queue.length) {
+					if (audio.paused) {
+						playNow(queue[i]);
+						clearInterval(waitPlease);
+					}
+				} else {
+					clearInterval(waitPlease);
 				}
 			}, 50);
 		}
+		playNow(queue[i]);
 	}
 	
 	this.emptyBoard = function () {
 		this.Squares = [["X", "X", "X"], ["X", "X", "X"], ["X", "X", "X"]];
-		//TODO: Una forma de buscar un caracter en una matriz. D-:<
 		if (!(this.Chip in ["W", "B"])) {
 			this.Chip = "W";
 			this.Color = "White";
