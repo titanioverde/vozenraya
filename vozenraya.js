@@ -32,7 +32,7 @@ var Board = function (Chip) {
 	}
 	this.Squares = [["X", "X", "X"], ["X", "X", "X"], ["X", "X", "X"]];
 	
-	parentThis = this; //Never forget the main object.
+	var parentThis = this; //Never forget the main object.
 	
 	this.VoicePath = "voice_es-ES/";
 	this.Voice = {
@@ -41,7 +41,8 @@ var Board = function (Chip) {
 		"row3": new Audio(this.VoicePath + "row3.ogg"),
 		"X": new Audio(this.VoicePath + "empty.ogg"),
 		"W": new Audio(this.VoicePath + "white.ogg"),
-		"B": new Audio(this.VoicePath + "black.ogg")
+		"B": new Audio(this.VoicePath + "black.ogg"),
+		"turnfor": new Audio(this.VoicePath + "turnfor.ogg")
 	}
 
 	this.voiceReceiver = new webkitSpeechRecognition();
@@ -84,48 +85,33 @@ var Board = function (Chip) {
 				queue.push(this.Voice[Squares[i][j]]);
 			}
 		}
-		this.audioQueue(queue);
-		//this.speakSquare(0, 0);
+		this.audioQueue(queue, 200);
 	}
 	
 	
-	//this.speakSquare = function(row, column) {
-	//	var Squares = this.Squares;
-	//	var currentVoice = this.Voice[Squares[row][column]];
-	//	currentVoice.play();
-	//	
-	//	//Select the next square.
-	//	column += 1;
-	//	if (column >= Squares[0].length) {
-	//		column = 0;
-	//		row += 1;
-	//	}
-	//	if (row < Squares.length) {
-	//		//Speak the next square when the current one is done.
-	//		var waitPlease = setInterval(function () {
-	//			if (currentVoice.paused) {
-	//				parentThis.speakSquare(row, column);
-	//				clearInterval(waitPlease);
-	//			}
-	//		}, 50);
-	//	}
-	//}
-	
-	//It receives an array of Audio objects and plays them one by one.
-	//Necessary due to Javascript's asyncronous nature.
-	//This method was strongly inspired on: http://stackoverflow.com/a/7701368/990228
-	this.audioQueue = function(queue) {
+	this.audioQueue = function(queue, delay, callback) {
+		//TODO: delay for the next item.
+		delay = delay || 500;
 		var i = 0;
 		var playNow = function(audio) {
 			audio.play();
 			i += 1;
 			var waitPlease = setInterval(function() {
 				if (i < queue.length) {
-					if (audio.paused) {
-						playNow(queue[i]);
+					if (audio.ended) {
+						setTimeout(function() { playNow(queue[i]) }, delay);
 						clearInterval(waitPlease);
 					}
 				} else {
+					if (typeof(callback) == "function") {
+						var waitPlease2 = setInterval(function() {
+							if (audio.ended) {
+								//TODO: Is there really no cleaner way to do this?! T_T
+								setTimeout(function() { callback() }, delay);
+								clearInterval(waitPlease2);
+							}
+						}, 50);
+					}
 					clearInterval(waitPlease);
 				}
 			}, 50);
@@ -135,6 +121,7 @@ var Board = function (Chip) {
 	
 	this.emptyBoard = function () {
 		this.Squares = [["X", "X", "X"], ["X", "X", "X"], ["X", "X", "X"]];
+		
 		if (!(this.Chip in ["W", "B"])) {
 			this.Chip = "W";
 			this.Color = "White";
@@ -270,16 +257,15 @@ var Board = function (Chip) {
 				micBusy = false;
 			}
 		}
+		
 		var waitPlease = setInterval(function () {
 				if (micBusy == false) {
 					micBusy = true;
-					anotherVoice.start();
+					var voiceQueue = [parentThis.Voice["turnfor"], parentThis.Voice[parentThis.Chip]];
+					parentThis.audioQueue(voiceQueue, 200, function() { anotherVoice.start(); });
 				}
 			}, 100);
 		//Chromium detiene el bucle cuando no detecta voz durante unos segundos.
-		
-		
-			
 		
 	}
 	
