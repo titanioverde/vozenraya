@@ -36,13 +36,24 @@ var Board = function (Chip) {
 	
 	this.VoicePath = "voice_es-ES/";
 	this.Voice = {
+		"welcome": new Audio(this.VoicePath + "welcome.ogg"),
+		"start": new Audio(this.VoicePath + "start.ogg"),
 		"row1": new Audio(this.VoicePath + "row1.ogg"),
 		"row2": new Audio(this.VoicePath + "row2.ogg"),
 		"row3": new Audio(this.VoicePath + "row3.ogg"),
 		"X": new Audio(this.VoicePath + "empty.ogg"),
 		"W": new Audio(this.VoicePath + "white.ogg"),
 		"B": new Audio(this.VoicePath + "black.ogg"),
-		"turnfor": new Audio(this.VoicePath + "turnfor.ogg")
+		"turnfor": new Audio(this.VoicePath + "turnfor.ogg"),
+		"Whites": new Audio(this.VoicePath + "whites.ogg"),
+		"Blacks": new Audio(this.VoicePath + "blacks.ogg"),
+		"horizontal": new Audio(this.VoicePath + "horizontal.ogg"),
+		"vertical": new Audio(this.VoicePath + "vertical.ogg"),
+		"diagonal": new Audio(this.VoicePath + "diagonal.ogg"),
+		"tie": new Audio(this.VoicePath + "tie.ogg"),
+		"busy": new Audio(this.VoicePath + "busy.ogg"),
+		"success": new Audio(this.VoicePath + "success.ogg"),
+		"unheard": new Audio(this.VoicePath + "unheard.ogg")
 	}
 
 	this.voiceReceiver = new webkitSpeechRecognition();
@@ -122,10 +133,7 @@ var Board = function (Chip) {
 	this.emptyBoard = function () {
 		this.Squares = [["X", "X", "X"], ["X", "X", "X"], ["X", "X", "X"]];
 		
-		if (!(this.Chip in ["W", "B"])) {
-			this.Chip = "W";
-			this.Color = "White";
-		}
+		//this.changeTurn();
 		console.log("Another game.");
 	}
 	
@@ -140,7 +148,7 @@ var Board = function (Chip) {
 					var resultado = "Victoria horizontal para " + this.Color;
 					console.log(resultado);
 					document.getElementById("contenido").appendChild(document.createTextNode("<br />" + resultado));
-					return 1;
+					return "horizontal";
 				}
 			}
 		}
@@ -153,7 +161,7 @@ var Board = function (Chip) {
 					var resultado = "Victoria vertical para " + this.Color;
 					console.log(resultado);
 					document.getElementById("contenido").appendChild(document.createTextNode("<br />" + resultado));
-					return 1;
+					return "vertical";
 				}
 			}
 		}
@@ -166,7 +174,7 @@ var Board = function (Chip) {
 				var resultado = "Victoria diagonal para " + this.Color;
 				console.log(resultado);
 				document.getElementById("contenido").appendChild(document.createTextNode("<br />" + resultado));
-				return 1;
+				return "diagonal";
 			}
 		}
 		
@@ -176,7 +184,7 @@ var Board = function (Chip) {
 	this.theresTie = function () {
 		if (this.showBoard().indexOf("X") == -1) {
 			console.log("Empate. :-D-:");
-			return 1;
+			return "tie";
 		}
 		return 0;
 	}
@@ -223,10 +231,34 @@ var Board = function (Chip) {
 			if (this.theresLine() || this.theresTie()) {
 				this.emptyBoard();
 			}
-			//document.getElementById("contenido").appendChild(document.createTextNode("<br />" + this.showBoard()));
 			this.changeTurn();
 		} else {
 			console.log("Casilla ocupada.");
+		}
+	}
+	
+	this.basicTurnFlowWithReturn = function(Target) {
+		var turnResult = "success";
+		if (!(this.isOccupied(Target[0], Target[1]))) {
+			this.putChip(this.Chip, Target[0], Target[1]);
+			
+			var line = this.theresLine();
+			var tie = this.theresTie();
+			if (line) {
+				turnResult = line;
+			}
+			if (tie) {
+				turnResult = tie;
+			}
+			
+			if (line || tie) {
+				this.emptyBoard();
+			}
+			this.changeTurn();
+			return turnResult;
+		} else {
+			console.log("Casilla ocupada.");
+			return "busy";
 		}
 	}
 	
@@ -240,19 +272,26 @@ var Board = function (Chip) {
 	this.turnFlowWithVoice = function(sample) {
 		this.voiceReceiver.start();
 		var Target = this.recognizePosition(sample);
-		this.basicTurnFlow(Target);
+		var turnResult = this.basicTurnFlow(Target);
 		console.log(this.showBoard());
 	}
 
 	this.turnFlowWithVoiceAuto = function() {
 		var anotherVoice = new webkitSpeechRecognition();
 		var micBusy = false;
+		var turnResult = "success";
 		anotherVoice.lang = "es-ES";
 		anotherVoice.onresult = function (event) {
 			if (event.results.length > 0) {
 				phrase1 = event.results[0][0].transcript;
 				Target1 = parentThis.recognizePosition(phrase1);
-				parentThis.basicTurnFlow(Target1);
+				console.log(Target1[0] == -1 || Target1[1] == -1);
+				if (!(Target1[0] == -1 || Target1[1] == -1)) {
+					turnResult = parentThis.basicTurnFlowWithReturn(Target1);
+				} else {
+					turnResult = "unheard";
+				}
+				console.log(turnResult);
 				console.log(parentThis.showBoard());
 				micBusy = false;
 			}
@@ -261,7 +300,7 @@ var Board = function (Chip) {
 		var waitPlease = setInterval(function () {
 				if (micBusy == false) {
 					micBusy = true;
-					var voiceQueue = [parentThis.Voice["turnfor"], parentThis.Voice[parentThis.Chip]];
+					var voiceQueue = [parentThis.Voice[turnResult], parentThis.Voice["turnfor"], parentThis.Voice[parentThis.Color]];
 					parentThis.audioQueue(voiceQueue, 200, function() { anotherVoice.start(); });
 				}
 			}, 100);
