@@ -1,6 +1,6 @@
 var dict1 = ["uno", "1"];
-var dict2 = ["dos", "2"];
-var dict3 = ["tres", "3"];
+var dict2 = ["dos", "2", "tos"];
+var dict3 = ["tres", "3", "crees"];
 
 var dictA = ["a", "ah"];
 var dictB = ["b", "be"];
@@ -8,6 +8,8 @@ var dictC = ["c", "ce"];
 
 var dictRows = [dict1, dict2, dict3];
 var dictColumns = [dictA, dictB, dictC];
+
+var dictHelp = ["ayuda"];
 
 var dictStart = ["comenzar"];
 var dictHuman = ["humano"];
@@ -19,10 +21,11 @@ var dictCheck = ["revisar"];
 var dictPut = ["colocar"];
 var dictGiveUp = ["abandonar"];
 
-var dictPlayMenu = [dictCheck, dictPut, dictGiveUp];
+var dictPlayMenu = [dictHelp, dictCheck, dictPut, dictGiveUp];
 
 
 var Board = function (Chip) {
+	//To select the first color, or to pick the default one.
 	this.Chip = Chip || "W";
 	if (Chip == "W") {
 		this.Color = "Whites";
@@ -30,13 +33,24 @@ var Board = function (Chip) {
 		this.Chip = "B";
 		this.Color = "Blacks";
 	}
+	
+	//An empty board.
 	this.Squares = [["X", "X", "X"], ["X", "X", "X"], ["X", "X", "X"]];
 	
 	var parentThis = this; //Never forget the main object.
 	
+	//Error control.
+	this.microphoneWorks = false;
+	this.failCount = 0;
+	this.micBusy = false;
+	
+	//Voice sample repository.
 	this.VoicePath = "voice_es-ES/";
 	this.Voice = {
 		"welcome": new Audio(this.VoicePath + "welcome.ogg"),
+		"check-mic": new Audio(this.VoicePath + "check-mic.ogg"),
+		"check-mic-ok": new Audio(this.VoicePath + "check-mic-ok.ogg"),
+		"check-mic-fail": new Audio(this.VoicePath + "check-mic-fail.ogg"),
 		"start": new Audio(this.VoicePath + "start.ogg"),
 		"row1": new Audio(this.VoicePath + "row1.ogg"),
 		"row2": new Audio(this.VoicePath + "row2.ogg"),
@@ -51,11 +65,19 @@ var Board = function (Chip) {
 		"vertical": new Audio(this.VoicePath + "vertical.ogg"),
 		"diagonal": new Audio(this.VoicePath + "diagonal.ogg"),
 		"tie": new Audio(this.VoicePath + "tie.ogg"),
+		"surrender": new Audio(this.VoicePath + "surrender.ogg"),
 		"busy": new Audio(this.VoicePath + "busy.ogg"),
 		"success": new Audio(this.VoicePath + "success.ogg"),
-		"unheard": new Audio(this.VoicePath + "unheard.ogg")
+		"unheard": new Audio(this.VoicePath + "unheard.ogg"),
+		"silence": new Audio(this.VoicePath + "silence.ogg"),
+		"void": new Audio(this.VoicePath + "void.ogg"),
+		"general-help": new Audio(this.VoicePath + "general-help.ogg"),
+		"put-help": new Audio(this.VoicePath + "put-help.ogg"),
+		"availableactions": new Audio(this.VoicePath + "availableactions.ogg"),
+		"play-menu": new Audio(this.VoicePath + "play-menu.ogg")
 	}
 
+	//A generic voice recognition object (despite there's "anotherVoice" further).
 	this.voiceReceiver = new webkitSpeechRecognition();
 	this.voiceReceiver.lang = "es-ES";
 	this.voiceReceiver.onresult = function (event) {
@@ -63,6 +85,41 @@ var Board = function (Chip) {
 			phrase = event.results[0][0].transcript;
 			document.getElementById("voiceresult").value = phrase;
 		}
+	}
+	
+	this.checkMicrophone = function() {
+		this.microphoneWorks = false;
+		var voiceTest = new webkitSpeechRecognition();
+		voiceTest.lang = "es-ES";
+		voiceTest.onresult = function(event) {
+			if (event.results.length > 0) {
+				phrase = event.results[0][0].transcript;
+				results = parentThis.recognizePosition(phrase);
+				console.log(results);
+				if (results.indexOf(-1) > -1) {
+					queue = parentThis.Voice["check-mic-fail"];
+				} else {
+					parentThis.microphoneWorks = true;
+					queue = parentThis.Voice["check-mic-ok"];
+				}
+				parentThis.audioQueue([queue], 100, function() { parentThis.micBusy = false; });
+			}
+		}
+		this.audioQueue([this.Voice["check-mic"]], 200, function() {
+			var forTheCheck = setInterval(function() {
+				//console.log(parentThis.microphoneWorks + " " + parentThis.micBusy);
+				if (parentThis.microphoneWorks == false) {
+					if (parentThis.micBusy == false) {
+						//console.log("o.O");
+						parentThis.micBusy = true;
+						voiceTest.start();
+					}
+				} else {
+					clearInterval(forTheCheck);
+				}
+			}, 60);
+		});
+		
 	}
 	
 	this.showBoard = function () {
@@ -82,11 +139,49 @@ var Board = function (Chip) {
 			}
 			results.push(found);
 		}
-		console.log(results.toString());
 		return (results);
 	}
 	
-	this.readBoard = function() {
+	this.compareCommand = function(sample, dict) {
+		var word = sample.toLowerCase().split(" ")[0];
+		var result = "";
+		for (var i in dict) {
+			if (dict[i].toString().indexOf(word) > -1) {
+				result = i;
+			}
+		}
+		return result;
+	}
+	
+	this.commandPlayMenu = function(index) {
+		switch (index) {
+			case "0":
+				return [this.Voice["availableactions"], this.Voice["play-menu"]];
+				break;
+				
+			case "1":
+				//Check.
+				return this.readBoard(true);
+				break;
+			
+			case "2":
+				return [this.Voice["put-help"]];
+				break;
+			
+			case "3":
+				//Give up.
+				var voice = [this.Voice[this.Color], this.Voice["surrender"], this.Voice["start"]];
+				this.emptyBoard();
+				this.changeTurn();
+				return voice;
+				break;
+			default:
+				console.log(index + "No luck");
+		}
+		return "void";
+	}
+	
+	this.readBoard = function(toQueue) {
 		var queue = [];
 		var Squares = this.Squares;
 		for (var i in Squares) {
@@ -96,12 +191,16 @@ var Board = function (Chip) {
 				queue.push(this.Voice[Squares[i][j]]);
 			}
 		}
-		this.audioQueue(queue, 200);
+		if (toQueue) {
+			return queue;
+		} else {
+			this.audioQueue(queue, 200);
+		}
+		return 0;
 	}
 	
 	
 	this.audioQueue = function(queue, delay, callback) {
-		//TODO: delay for the next item.
 		delay = delay || 500;
 		var i = 0;
 		var playNow = function(audio) {
@@ -214,17 +313,26 @@ var Board = function (Chip) {
 		}
 	}
 	
-	this.changeTurn = function () {
+	this.changeTurn = function (dontChange) {
+		dontChange = dontChange || false;
+		var otherChip, otherColor;
+		
 		if (this.Chip == "B") {
-			this.Chip = "W";
-			this.Color = "Whites"
+			otherChip = "W";
+			otherColor = "Whites";
 		} else {
-			this.Chip = "B";
-			this.Color = "Blacks";
+			otherChip = "B";
+			otherColor = "Blacks";
 		}
+		
+		if (!(dontChange)) {
+			this.Chip = otherChip;
+			this.Color = otherColor;
+		}
+		
+		return [otherChip, otherColor];
 	}
 	
-	//TODO: Programar otro flujo para entrada por voz.
 	this.basicTurnFlow = function(Target) {
 		if (!(this.isOccupied(Target[0], Target[1]))) {
 			this.putChip(this.Chip, Target[0], Target[1]);
@@ -277,30 +385,58 @@ var Board = function (Chip) {
 	}
 
 	this.turnFlowWithVoiceAuto = function() {
+		
+		var turnResult = "void";
 		var anotherVoice = new webkitSpeechRecognition();
-		var micBusy = false;
-		var turnResult = "success";
 		anotherVoice.lang = "es-ES";
 		anotherVoice.onresult = function (event) {
 			if (event.results.length > 0) {
 				phrase1 = event.results[0][0].transcript;
 				Target1 = parentThis.recognizePosition(phrase1);
-				console.log(Target1[0] == -1 || Target1[1] == -1);
 				if (!(Target1[0] == -1 || Target1[1] == -1)) {
 					turnResult = parentThis.basicTurnFlowWithReturn(Target1);
 				} else {
-					turnResult = "unheard";
+					var command = parentThis.compareCommand(phrase1, dictPlayMenu);
+					if (command != "") {
+						turnResult = parentThis.commandPlayMenu(command);
+					} else {
+						turnResult = "unheard";
+					}
+					
 				}
-				console.log(turnResult);
 				console.log(parentThis.showBoard());
-				micBusy = false;
+				parentThis.micBusy = false;
+			}
+		}
+		
+		anotherVoice.onerror = function (event) {
+			if (event.error == "no-speech") {
+				//Nothing on the mic.
+				this.failCount += 1;
+				turnResult = "silence";
+				parentThis.micBusy = false;
 			}
 		}
 		
 		var waitPlease = setInterval(function () {
-				if (micBusy == false) {
-					micBusy = true;
-					var voiceQueue = [parentThis.Voice[turnResult], parentThis.Voice["turnfor"], parentThis.Voice[parentThis.Color]];
+				if (parentThis.micBusy == false) {
+					parentThis.micBusy = true;
+					var voiceQueue = [];
+					if (["Array", "object"].indexOf(typeof(turnResult)) > -1) {
+						for (var i in turnResult) {
+							voiceQueue.push(turnResult[i]);
+						}
+					} else {
+						
+						voiceQueue.push(parentThis.Voice[turnResult]);
+					}
+					if (["vertical", "horizontal", "diagonal"].indexOf(turnResult) > -1) {
+						var otherColor = parentThis.changeTurn()[1];
+						voiceQueue.push(parentThis.Voice[otherColor]);
+						voiceQueue.push(parentThis.Voice["start"]);
+					}
+					voiceQueue.push(parentThis.Voice["turnfor"]);
+					voiceQueue.push(parentThis.Voice[parentThis.Color]);
 					parentThis.audioQueue(voiceQueue, 200, function() { anotherVoice.start(); });
 				}
 			}, 100);
@@ -320,6 +456,20 @@ var Board = function (Chip) {
 		}
 	}
 	
+	this.startGameWithVoice = function () {
+		if (this.microphoneWorks == false) {
+			this.checkMicrophone();
+		}
+		var letsPlay = setInterval(function() {
+			if (parentThis.microphoneWorks == true) {
+				parentThis.turnFlowWithVoiceAuto();
+				clearInterval(letsPlay);
+			}
+		}, 100);
+		
+	}
+	
+	this.Voice["welcome"].play();
 }
 
 var Tablero1 = new Board();
