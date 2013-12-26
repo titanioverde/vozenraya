@@ -43,6 +43,7 @@ var Board = function (Chip) {
 	this.microphoneWorks = false;
 	this.failCount = 0;
 	this.micBusy = false;
+	this.lastWinner = ["X", 0];
 	
 	//Voice sample repository.
 	this.VoicePath = "voice_es-ES/";
@@ -51,6 +52,7 @@ var Board = function (Chip) {
 		"check-mic": new Audio(this.VoicePath + "check-mic.ogg"),
 		"check-mic-ok": new Audio(this.VoicePath + "check-mic-ok.ogg"),
 		"check-mic-fail": new Audio(this.VoicePath + "check-mic-fail.ogg"),
+		"not-working": new Audio(this.VoicePath + "not-working.ogg"),
 		"start": new Audio(this.VoicePath + "start.ogg"),
 		"row1": new Audio(this.VoicePath + "row1.ogg"),
 		"row2": new Audio(this.VoicePath + "row2.ogg"),
@@ -73,7 +75,7 @@ var Board = function (Chip) {
 		"void": new Audio(this.VoicePath + "void.ogg"),
 		"general-help": new Audio(this.VoicePath + "general-help.ogg"),
 		"put-help": new Audio(this.VoicePath + "put-help.ogg"),
-		"availableactions": new Audio(this.VoicePath + "availableactions.ogg"),
+		"available-actions": new Audio(this.VoicePath + "available-actions.ogg"),
 		"play-menu": new Audio(this.VoicePath + "play-menu.ogg")
 	}
 
@@ -97,24 +99,43 @@ var Board = function (Chip) {
 				results = parentThis.recognizePosition(phrase);
 				console.log(results);
 				if (results.indexOf(-1) > -1) {
-					queue = parentThis.Voice["check-mic-fail"];
+					queue = [parentThis.Voice["check-mic-fail"]];
+					parentThis.failCount += 1;
 				} else {
 					parentThis.microphoneWorks = true;
-					queue = parentThis.Voice["check-mic-ok"];
+					queue = [parentThis.Voice["check-mic-ok"],
+							 parentThis.Voice["general-help"],
+							 parentThis.Voice["available-actions"],
+							 parentThis.Voice["play-menu"],
+							 parentThis.Voice["start"]];
 				}
-				parentThis.audioQueue([queue], 100, function() { parentThis.micBusy = false; });
+				parentThis.audioQueue(queue, 100, function() { parentThis.micBusy = false; });
 			}
 		}
+		
+		voiceTest.onerror = function(event) {
+			if (event.error == "no-speech" && parentThis.failCount < 3) {
+				parentThis.failCount += 1;
+				parentThis.audioQueue([parentThis.Voice["silence"]], 100, function() { parentThis.micBusy = false; });
+			}
+		}
+		
 		this.audioQueue([this.Voice["check-mic"]], 200, function() {
 			var forTheCheck = setInterval(function() {
 				//console.log(parentThis.microphoneWorks + " " + parentThis.micBusy);
 				if (parentThis.microphoneWorks == false) {
 					if (parentThis.micBusy == false) {
 						//console.log("o.O");
-						parentThis.micBusy = true;
-						voiceTest.start();
+						if (parentThis.failCount >= 3) {
+							parentThis.audioQueue([parentThis.Voice["not-working"]], 1);
+							clearInterval(forTheCheck);
+						} else {
+							parentThis.micBusy = true;
+							voiceTest.start();
+						}
 					}
 				} else {
+					parentThis.failCount = 0;
 					clearInterval(forTheCheck);
 				}
 			}, 60);
@@ -156,7 +177,7 @@ var Board = function (Chip) {
 	this.commandPlayMenu = function(index) {
 		switch (index) {
 			case "0":
-				return [this.Voice["availableactions"], this.Voice["play-menu"]];
+				return [this.Voice["available-actions"], this.Voice["play-menu"]];
 				break;
 				
 			case "1":
@@ -175,8 +196,6 @@ var Board = function (Chip) {
 				this.changeTurn();
 				return voice;
 				break;
-			default:
-				console.log(index + "No luck");
 		}
 		return "void";
 	}
@@ -233,7 +252,6 @@ var Board = function (Chip) {
 		this.Squares = [["X", "X", "X"], ["X", "X", "X"], ["X", "X", "X"]];
 		
 		//this.changeTurn();
-		console.log("Another game.");
 	}
 	
 	this.theresLine = function () {
@@ -385,7 +403,6 @@ var Board = function (Chip) {
 	}
 
 	this.turnFlowWithVoiceAuto = function() {
-		
 		var turnResult = "void";
 		var anotherVoice = new webkitSpeechRecognition();
 		anotherVoice.lang = "es-ES";
@@ -400,6 +417,7 @@ var Board = function (Chip) {
 					if (command != "") {
 						turnResult = parentThis.commandPlayMenu(command);
 					} else {
+						parentThis.failCount += 1;
 						turnResult = "unheard";
 					}
 					
@@ -412,7 +430,7 @@ var Board = function (Chip) {
 		anotherVoice.onerror = function (event) {
 			if (event.error == "no-speech") {
 				//Nothing on the mic.
-				this.failCount += 1;
+				parentThis.failCount += 1;
 				turnResult = "silence";
 				parentThis.micBusy = false;
 			}
@@ -420,27 +438,31 @@ var Board = function (Chip) {
 		
 		var waitPlease = setInterval(function () {
 				if (parentThis.micBusy == false) {
-					parentThis.micBusy = true;
-					var voiceQueue = [];
-					if (["Array", "object"].indexOf(typeof(turnResult)) > -1) {
-						for (var i in turnResult) {
-							voiceQueue.push(turnResult[i]);
-						}
+					if (parentThis.failCount >= 4) {
+							parentThis.audioQueue([parentThis.Voice["not-working"]], 1);
+							clearInterval(waitPlease);
 					} else {
-						
-						voiceQueue.push(parentThis.Voice[turnResult]);
+						parentThis.micBusy = true;
+						var voiceQueue = [];
+						if (["Array", "object"].indexOf(typeof(turnResult)) > -1) {
+							for (var i in turnResult) {
+								voiceQueue.push(turnResult[i]);
+							}
+						} else {
+							voiceQueue.push(parentThis.Voice[turnResult]);
+						}
+						if (["vertical", "horizontal", "diagonal"].indexOf(turnResult) > -1) {
+							var otherColor = parentThis.changeTurn(true)[1];
+							voiceQueue.push(parentThis.Voice[otherColor]);
+							voiceQueue.push(parentThis.Voice["start"]);
+						}
+						voiceQueue.push(parentThis.Voice["turnfor"]);
+						voiceQueue.push(parentThis.Voice[parentThis.Color]);
+						parentThis.audioQueue(voiceQueue, 200, function() { anotherVoice.start(); });
 					}
-					if (["vertical", "horizontal", "diagonal"].indexOf(turnResult) > -1) {
-						var otherColor = parentThis.changeTurn()[1];
-						voiceQueue.push(parentThis.Voice[otherColor]);
-						voiceQueue.push(parentThis.Voice["start"]);
-					}
-					voiceQueue.push(parentThis.Voice["turnfor"]);
-					voiceQueue.push(parentThis.Voice[parentThis.Color]);
-					parentThis.audioQueue(voiceQueue, 200, function() { anotherVoice.start(); });
 				}
 			}, 100);
-		//Chromium detiene el bucle cuando no detecta voz durante unos segundos.
+		//Chromium stops recognizing when no voice detected during some seconds.
 		
 	}
 	
