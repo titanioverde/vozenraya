@@ -12,4 +12,4 @@ Quiero que dependa lo menos posible de software adicional, por lo cual descarto 
 
 
 ESTADO ACTUAL:
-El objetivo final es poderlo jugar sin tener que mirar y sin pulsar nada. Será necesaria síntesis de voz o locuciones grabadas, y que la petición de permisos del navegador obstruya lo menos posible. Mi primera prioridad era probar el reconocimiento de voz, después de haber escrito el juego en sí en Python y luego reescrito en Javascript. Así que todavía me falta todo lo demás. ^_^u Mejor dejo de divagar y vaig per feina.
+Cerca de poder jugar nada más abrir la página y sin pulsar nada. Programar cada ciclo de reconocimiento de voz se me hace un poco complicado, gracias a la naturaleza asíncrona de Javascript.
