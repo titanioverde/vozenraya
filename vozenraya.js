@@ -44,6 +44,7 @@ var Board = function (Chip) {
 	this.failCount = 0;
 	this.micBusy = false;
 	this.lastWinner = ["X", 0];
+	this.fastGame = false;
 	
 	//Voice sample repository.
 	this.VoicePath = "voice_es-ES/";
@@ -57,6 +58,9 @@ var Board = function (Chip) {
 		"row1": new Audio(this.VoicePath + "row1.ogg"),
 		"row2": new Audio(this.VoicePath + "row2.ogg"),
 		"row3": new Audio(this.VoicePath + "row3.ogg"),
+		"column1": new Audio(this.VoicePath + "column1.ogg"),
+		"column2": new Audio(this.VoicePath + "column2.ogg"),
+		"column3": new Audio(this.VoicePath + "column3.ogg"),
 		"X": new Audio(this.VoicePath + "empty.ogg"),
 		"W": new Audio(this.VoicePath + "white.ogg"),
 		"B": new Audio(this.VoicePath + "black.ogg"),
@@ -182,7 +186,7 @@ var Board = function (Chip) {
 				
 			case "1":
 				//Check.
-				return this.readBoard(true);
+				return this.queueBoard();
 				break;
 			
 			case "2":
@@ -216,6 +220,19 @@ var Board = function (Chip) {
 			this.audioQueue(queue, 200);
 		}
 		return 0;
+	}
+	
+	this.queueBoard = function() {
+		var queue = [];
+		var Squares = this.Squares;
+		for (var i in Squares) {
+			var currentRow = parseInt(i) + 1;
+			queue.push("row" + String(currentRow));
+			for (var j in Squares[i]) {
+				queue.push(Squares[i][j]);
+			}
+		}
+		return queue;
 	}
 	
 	
@@ -372,20 +389,29 @@ var Board = function (Chip) {
 			var tie = this.theresTie();
 			if (line) {
 				turnResult = line;
-			}
-			if (tie) {
-				turnResult = tie;
+			} else {
+				if (tie) {
+					turnResult = tie;
+				}
 			}
 			
 			if (line || tie) {
 				this.emptyBoard();
 			}
 			this.changeTurn();
-			return turnResult;
 		} else {
 			console.log("Casilla ocupada.");
-			return "busy";
+			turnResult = "busy";
 		}
+		
+		if (this.fastGame) {
+			return turnResult;
+		} else {
+			var row = parseInt(Target[0]) + 1;
+			var column = parseInt(Target[1]) + 1;
+			return ["row" + row, "column" + column, turnResult];
+		}
+		
 	}
 	
 	this.humanTurnFlow = function () {
@@ -446,18 +472,19 @@ var Board = function (Chip) {
 						var voiceQueue = [];
 						if (["Array", "object"].indexOf(typeof(turnResult)) > -1) {
 							for (var i in turnResult) {
-								voiceQueue.push(turnResult[i]);
+								voiceQueue.push(parentThis.Voice[turnResult[i]]);
 							}
 						} else {
 							voiceQueue.push(parentThis.Voice[turnResult]);
 						}
-						if (["vertical", "horizontal", "diagonal"].indexOf(turnResult) > -1) {
+						if (["vertical", "horizontal", "diagonal"].indexOf(turnResult[2]) > -1) {
 							var otherColor = parentThis.changeTurn(true)[1];
 							voiceQueue.push(parentThis.Voice[otherColor]);
 							voiceQueue.push(parentThis.Voice["start"]);
 						}
 						voiceQueue.push(parentThis.Voice["turnfor"]);
 						voiceQueue.push(parentThis.Voice[parentThis.Color]);
+						console.log(voiceQueue);
 						parentThis.audioQueue(voiceQueue, 200, function() { anotherVoice.start(); });
 					}
 				}
