@@ -39,12 +39,13 @@ var Board = function (Chip) {
 	
 	var parentThis = this; //Never forget the main object.
 	
-	//Error control.
+	//Error control and options.
 	this.microphoneWorks = false;
 	this.failCount = 0;
 	this.micBusy = false;
 	this.lastWinner = ["X", 0];
 	this.fastGame = false;
+	this.players = {"B": 0, "W": 0}; //0 = human. 1+ = IA.
 	
 	//Voice sample repository.
 	this.VoicePath = "voice_es-ES/";
@@ -339,6 +340,19 @@ var Board = function (Chip) {
 		}
 	}
 	
+	this.listEmptySquares = function () {
+		var empties = [];
+		var Squares = this.Squares;
+		for (var row in Squares) {
+			for (var column in Squares[row]) {
+				if (!(this.isOccupied(row, column))) {
+					empties.push([row, column]);
+				}
+			}
+		}
+		return empties;
+	}
+	
 	this.putChip = function (Chip, Row, Column) {
 		if (!(this.isOccupied(Row, Column))) {
 			this.Squares[Row][Column] = Chip;
@@ -421,6 +435,12 @@ var Board = function (Chip) {
 		this.basicTurnFlow(Target);
 	}
 	
+	this.randomIA = function () {
+		var empties = this.listEmptySquares();
+		var choice = parseInt(Math.random() * empties.length);
+		return empties[choice];
+	}
+	
 	this.turnFlowWithVoice = function(sample) {
 		this.voiceReceiver.start();
 		var Target = this.recognizePosition(sample);
@@ -463,32 +483,45 @@ var Board = function (Chip) {
 		}
 		
 		var waitPlease = setInterval(function () {
-				if (parentThis.micBusy == false) {
-					if (parentThis.failCount >= 4) {
-							parentThis.audioQueue([parentThis.Voice["not-working"]], 1);
-							clearInterval(waitPlease);
+			if (parentThis.micBusy == false) {
+				if (parentThis.failCount >= 4) {
+						parentThis.audioQueue([parentThis.Voice["not-working"]], 1);
+						clearInterval(waitPlease);
+				} else {
+					parentThis.micBusy = true;
+					var voiceQueue = [];
+					if (["Array", "object"].indexOf(typeof(turnResult)) > -1) {
+						for (var i in turnResult) {
+							voiceQueue.push(parentThis.Voice[turnResult[i]]);
+						}
 					} else {
-						parentThis.micBusy = true;
-						var voiceQueue = [];
-						if (["Array", "object"].indexOf(typeof(turnResult)) > -1) {
-							for (var i in turnResult) {
-								voiceQueue.push(parentThis.Voice[turnResult[i]]);
-							}
-						} else {
-							voiceQueue.push(parentThis.Voice[turnResult]);
-						}
-						if (["vertical", "horizontal", "diagonal"].indexOf(turnResult[2]) > -1) {
-							var otherColor = parentThis.changeTurn(true)[1];
-							voiceQueue.push(parentThis.Voice[otherColor]);
-							voiceQueue.push(parentThis.Voice["start"]);
-						}
-						voiceQueue.push(parentThis.Voice["turnfor"]);
-						voiceQueue.push(parentThis.Voice[parentThis.Color]);
-						console.log(voiceQueue);
-						parentThis.audioQueue(voiceQueue, 200, function() { anotherVoice.start(); });
+						voiceQueue.push(parentThis.Voice[turnResult]);
 					}
+					if (["vertical", "horizontal", "diagonal"].indexOf(turnResult[2]) > -1) {
+						var otherColor = parentThis.changeTurn(true)[1];
+						voiceQueue.push(parentThis.Voice[otherColor]);
+						voiceQueue.push(parentThis.Voice["start"]);
+					}
+					voiceQueue.push(parentThis.Voice["turnfor"]);
+					voiceQueue.push(parentThis.Voice[parentThis.Color]);
+					console.log(voiceQueue);
+					parentThis.audioQueue(voiceQueue, 200, function() {
+						switch (parentThis.players[parentThis.Chip]) {
+							//case
+							case 0:
+								anotherVoice.start();
+								break;
+							case 1: //ARGH! Tougher than I thought. 
+								Target = parentThis.randomIA();
+								turnResult = parentThis.basicTurnFlowWithReturn(Target);
+								parentThis.micBusy = false;
+								break;
+						}
+						
+					});
 				}
-			}, 100);
+			}
+		}, 100);
 		//Chromium stops recognizing when no voice detected during some seconds.
 		
 	}
