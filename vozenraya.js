@@ -25,6 +25,8 @@ var dictPlayMenu = [dictHelp, dictCheck, dictPut, dictGiveUp];
 
 
 var Board = function (Chip) {
+	this.language = "es-ES";
+	
 	//To select the first color, or to pick the default one.
 	this.Chip = Chip || "W";
 	if (Chip == "W") {
@@ -40,12 +42,23 @@ var Board = function (Chip) {
 	var parentThis = this; //Never forget the main object.
 	
 	//Error control and options.
-	this.microphoneWorks = false;
+	if (window.location.search.indexOf("debug") > -1) {
+		this.debug = true;
+	} else {
+		this.debug = false;
+	}
+	
+	this.microphoneWorks = this.debug;
 	this.failCount = 0;
 	this.micBusy = false;
 	this.lastWinner = ["X", 0];
-	this.fastGame = false;
-	this.players = {"B": 0, "W": 0}; //0 = human. 1+ = IA.
+	this.fastGame = this.debug;
+	if (this.debug) {
+		this.players = {"B": 0, "W": 1}; //0 = human. 1+ = IA.
+	} else {
+		this.players = {"B": 0, "W": 0};
+	}
+	
 	
 	//Voice sample repository.
 	this.VoicePath = "voice_es-ES/";
@@ -266,13 +279,29 @@ var Board = function (Chip) {
 		playNow(queue[i]);
 	}
 	
-	this.emptyBoard = function () {
+	this.waitForVoice = function(voiceCallback, audioQueue) {
+		
+		
+		var voiceReceiver = new webkitSpeechRecognition();
+		voiceReceiver.lang = parentThis.language;
+		voiceReceiver.onresult = voiceCallback();
+		voiceReceiver.onerror = function(event) {
+			if (event.error == "no-speech") {
+				//Nothing on the mic.
+				parentThis.failCount += 1;
+				turnResult = "silence";
+				parentThis.micBusy = false;
+			}
+		}
+	}
+	
+	this.emptyBoard = function() {
 		this.Squares = [["X", "X", "X"], ["X", "X", "X"], ["X", "X", "X"]];
 		
 		//this.changeTurn();
 	}
 	
-	this.theresLine = function () {
+	this.theresLine = function() {
 		var Squares = this.Squares;
 		
 		//Horizontal
@@ -282,7 +311,6 @@ var Board = function (Chip) {
 					console.log(this.showBoard());
 					var resultado = "Victoria horizontal para " + this.Color;
 					console.log(resultado);
-					document.getElementById("contenido").appendChild(document.createTextNode("<br />" + resultado));
 					return "horizontal";
 				}
 			}
@@ -295,7 +323,6 @@ var Board = function (Chip) {
 					console.log(this.showBoard());
 					var resultado = "Victoria vertical para " + this.Color;
 					console.log(resultado);
-					document.getElementById("contenido").appendChild(document.createTextNode("<br />" + resultado));
 					return "vertical";
 				}
 			}
@@ -308,7 +335,6 @@ var Board = function (Chip) {
 				console.log(this.showBoard());
 				var resultado = "Victoria diagonal para " + this.Color;
 				console.log(resultado);
-				document.getElementById("contenido").appendChild(document.createTextNode("<br />" + resultado));
 				return "diagonal";
 			}
 		}
@@ -500,6 +526,9 @@ var Board = function (Chip) {
 					if (["vertical", "horizontal", "diagonal"].indexOf(turnResult[2]) > -1) {
 						var otherColor = parentThis.changeTurn(true)[1];
 						voiceQueue.push(parentThis.Voice[otherColor]);
+						voiceQueue.push(parentThis.Voice["start"]);
+					}
+					if ("tie" == turnResult[2]) {
 						voiceQueue.push(parentThis.Voice["start"]);
 					}
 					voiceQueue.push(parentThis.Voice["turnfor"]);
