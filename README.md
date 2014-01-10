@@ -13,3 +13,4 @@ Quiero que dependa lo menos posible de software adicional, por lo cual descarto 
 
 ESTADO ACTUAL:
 Cerca de poder jugar nada más abrir la página y sin pulsar nada. Programar cada ciclo de reconocimiento de voz se me hace un poco complicado, gracias a la naturaleza asíncrona de Javascript.
+Para acelerar las pruebas, se puede escribir  ?debug  al final de la URL.

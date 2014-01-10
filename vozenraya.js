@@ -38,6 +38,8 @@ var Board = function (Chip) {
 	
 	//An empty board.
 	this.Squares = [["X", "X", "X"], ["X", "X", "X"], ["X", "X", "X"]];
+	this.mainQueue = [];
+	this.mainBusy = false;
 	
 	var parentThis = this; //Never forget the main object.
 	
@@ -59,6 +61,8 @@ var Board = function (Chip) {
 		this.players = {"B": 0, "W": 0};
 	}
 	
+	Audio.prototype.kind = "audio";
+	Function.prototype.kind = "function";
 	
 	//Voice sample repository.
 	this.VoicePath = "voice_es-ES/";
@@ -140,7 +144,6 @@ var Board = function (Chip) {
 		
 		this.audioQueue([this.Voice["check-mic"]], 200, function() {
 			var forTheCheck = setInterval(function() {
-				//console.log(parentThis.microphoneWorks + " " + parentThis.micBusy);
 				if (parentThis.microphoneWorks == false) {
 					if (parentThis.micBusy == false) {
 						//console.log("o.O");
@@ -279,12 +282,12 @@ var Board = function (Chip) {
 		playNow(queue[i]);
 	}
 	
-	this.waitForVoice = function(voiceCallback, audioQueue) {
+	this.waitForVoice = function(onResult, callback, audioQueue) {
 		
 		
 		var voiceReceiver = new webkitSpeechRecognition();
 		voiceReceiver.lang = parentThis.language;
-		voiceReceiver.onresult = voiceCallback();
+		voiceReceiver.onresult = onResult();
 		voiceReceiver.onerror = function(event) {
 			if (event.error == "no-speech") {
 				//Nothing on the mic.
@@ -293,6 +296,15 @@ var Board = function (Chip) {
 				parentThis.micBusy = false;
 			}
 		}
+		
+		var waitLoop = setInterval(function() {
+			if (parentThis.micBusy == false) {
+				//ToDo: Should I put failCount event here?
+				parentThis.micBusy == true;
+				callback();
+				clearInterval(waitLoop);
+			}
+		}, 50);
 	}
 	
 	this.emptyBoard = function() {
@@ -558,6 +570,47 @@ var Board = function (Chip) {
 	this.mainMenu = function() {
 		var words = dictMainMenu;
 		//Mostrar descripción y opciones disponibles y esperar respuesta.
+	}
+	
+	this.mainQueueProcess = function(queue) {
+		
+		var queueSeason = setInterval(function() {
+			if (parentThis.mainBusy == false && queue.length > 0) {
+				parentThis.mainBusy = true;
+				var current = queue.push();
+				switch (current.kind) { 
+					case "audio":
+						this.audioQueue(current, 200, function() { parentThis.mainBusy = false; });
+						break;
+					case "function":
+						current();
+						parentThis.mainBusy = false;
+						break;
+					case "voice":
+						parentThis.micBusy = true;
+						var voiceReceiver = new webkitSpeechRecognition();
+						voiceReceiver.lang = parentThis.language;
+						voiceReceiver.onresult = current[0]();
+						
+						if (current.length > 1) {
+							voiceReceiver.onerror = current[1](event);
+						} else {
+							voiceReceiver.onerror = function(event) {
+								if (event.error == "no-speech") {
+									//Nothing on the mic.
+									parentThis.failCount += 1;
+									parentThis.mainQueue.push(parentThis.Voice["silence"]);
+								}
+							}
+						}
+						parentThis.mainQueue.push(current);
+						parentThis.micBusy = false;
+						parentThis.mainBusy = false;
+						break;
+						
+				}
+			}
+		}, 100);
 	}
 	
 	this.startGame = function () {
