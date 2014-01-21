@@ -4,7 +4,7 @@ var dict3 = ["tres", "3", "crees"];
 
 var dictA = ["a", "ah"];
 var dictB = ["b", "be"];
-var dictC = ["c", "ce"];
+var dictC = ["c", "ce", "sé", "se", "ze"];
 
 var dictRows = [dict1, dict2, dict3];
 var dictColumns = [dictA, dictB, dictC];
@@ -13,15 +13,22 @@ var dictHelp = ["ayuda"];
 
 var dictStart = ["comenzar"];
 var dictHuman = ["humano"];
-var dictCPU = ["ordenador"];
+var dictAIrandom = ["aleatorio"];
+var dictAIhard = ["difícil", "difísil"];
 
-var dictMainMenu = [dictStart, dictHuman, dictCPU];
+var dictPlayer = [dictHuman, dictAIrandom, dictAIhard];
 
 var dictCheck = ["revisar"];
 var dictPut = ["colocar"];
 var dictGiveUp = ["abandonar"];
+var dictPause = ["pausa", "va a usar", "va usa"];
 
-var dictPlayMenu = [dictHelp, dictCheck, dictPut, dictGiveUp];
+var dictPlayMenu = [dictHelp, dictCheck, dictPut, dictGiveUp, dictPause];
+
+var dictContinue = ["continuar"];
+var dictExit = ["salir", "salí"];
+
+var dictPauseMenu = [dictContinue, dictExit];
 
 
 var Board = function (Chip) {
@@ -50,29 +57,37 @@ var Board = function (Chip) {
 	
 	this.mainQueue = [];
 	this.mainBusy = false; //Semaphore, basically.
+	this.pause = false;
 	this.microphoneWorks = this.debug;
 	this.failCount = 0;
 	this.micBusy = false;
 	this.lastWinner = ["X", 0];
 	this.fastGame = this.debug;
 	if (this.debug) {
-		this.players = {"B": 0, "W": 1}; //0 = human. 1+ = IA.
+		this.players = {"B": 0, "W": 1, "set": true}; //0 = human. 1+ = IA.
 	} else {
-		this.players = {"B": 0, "W": 0};
+		this.players = {"B": 0, "W": 0, "set": false};
 	}
 	
 	Audio.prototype.kind = "audio";
 	Function.prototype.kind = "function";
 	
 	//Voice sample repository.
-	this.VoicePath = "voice_es-ES/";
+	this.VoicePath = "voice_" + this.language + "/";
+	this.SoundPath = "sound/"
 	this.Voice = {
+		"5-seconds": new Audio(this.VoicePath + "5-seconds.ogg"),
 		"welcome": new Audio(this.VoicePath + "welcome.ogg"),
 		"check-mic": new Audio(this.VoicePath + "check-mic.ogg"),
 		"check-mic-ok": new Audio(this.VoicePath + "check-mic-ok.ogg"),
 		"check-mic-fail": new Audio(this.VoicePath + "check-mic-fail.ogg"),
+		"choose-player": new Audio(this.VoicePath + "choose-player.ogg"),
+		"choose-human": new Audio(this.VoicePath + "choose-human.ogg"),
+		"choose-ai": new Audio(this.VoicePath + "choose-ai.ogg"),
+		"first-blacks": new Audio(this.VoicePath + "first-blacks.ogg"),
 		"not-working": new Audio(this.VoicePath + "not-working.ogg"),
 		"start": new Audio(this.VoicePath + "start.ogg"),
+		"pause": new Audio(this.VoicePath + "pause.ogg"),
 		"row1": new Audio(this.VoicePath + "row1.ogg"),
 		"row2": new Audio(this.VoicePath + "row2.ogg"),
 		"row3": new Audio(this.VoicePath + "row3.ogg"),
@@ -98,7 +113,8 @@ var Board = function (Chip) {
 		"general-help": new Audio(this.VoicePath + "general-help.ogg"),
 		"put-help": new Audio(this.VoicePath + "put-help.ogg"),
 		"available-actions": new Audio(this.VoicePath + "available-actions.ogg"),
-		"play-menu": new Audio(this.VoicePath + "play-menu.ogg")
+		"play-menu": new Audio(this.VoicePath + "play-menu.ogg"),
+		"not-implemented": new Audio(this.VoicePath + "not-implemented.ogg")
 	}
 
 	//A generic voice recognition object (despite there are other objects like this later).
@@ -166,6 +182,73 @@ var Board = function (Chip) {
 		});
 	}
 	
+	this.defaultOnerror = function(event, turnResult) {
+		if (event.error == "no-speech") {
+			//Nothing on the mic.
+			parentThis.failCount += 1;
+			turnResult = "silence";
+			parentThis.micBusy = false;
+		}
+		//Remaining errors: audio-capture, network, not-allowed/service-not-allowed, 
+		return turnResult;
+	}
+	
+	//Interactive menu. Human or AI level.
+	this.chooseAI = function() {
+		parentThis.micBusy = true;
+		var anotherVoice = new webkitSpeechRecognition();
+		anotherVoice.lang = "es-ES";
+		
+		anotherVoice.onresult = function(event) {
+			if (event.results.length > 0) {
+				phrase = event.results[0][0].transcript;
+				var choose = parentThis.compareCommand(phrase, dictPlayer);
+				if (choose != -1) {
+					var partner = ["B", "W"][Math.round(Math.random())];
+					parentThis.players[partner] = parseInt(choose);
+					
+					if (choose == 0) {
+						//Humans, choose a color in 5 seconds. Blacks start first.
+						var queue = [parentThis.Voice["choose-human"], parentThis.Voice["first-blacks"], parentThis.Voice["5-seconds"]];
+						parentThis.audioQueue(queue, 100,
+											  function() { parentThis.micBusy = false; parentThis.players["set"] = true; });
+					} else {
+						//I'll randomly choose your color.
+						var queue = [parentThis.Voice["choose-ai"], parentThis.Voice[parentThis.changeTurn(true)[1]]];
+						if (choose == 2) {
+							parentThis.players[partner] = 1; //Not implemented yet.
+							queue.unshift(parentThis.Voice["not-implemented"]);
+						}
+						parentThis.audioQueue(queue, 100,
+											  function() { parentThis.micBusy = false; parentThis.players["set"] = true; });
+					}
+					parentThis.players["set"] = true;
+				}
+			}
+		}
+		
+		anotherVoice.onerror = function(event) {
+			if (event.error == "no-speech" && parentThis.failCount < 3) {
+				parentThis.failCount += 1;
+				parentThis.audioQueue([parentThis.Voice["silence"]], 100, function() { parentThis.micBusy = false; });
+			}
+		}
+		
+		this.audioQueue([this.Voice["choose-player"]], 100, function() {
+			anotherVoice.start();
+			var forTheCheck = setInterval(function() {
+				if (parentThis.players["set"] == false) {
+					if (parentThis.micBusy == false) {
+						parentThis.micBusy = true;
+						anotherVoice.start();
+					}
+				} else {
+					clearInterval(forTheCheck);
+				}
+			}, 100);
+		});
+	}
+	
 	//To retrieve the current board as a string.
 	this.showBoard = function () {
 		var output = String(this.Squares[0]) + "\n" + String(this.Squares[1]) + "\n" + String(this.Squares[2]);
@@ -225,6 +308,11 @@ var Board = function (Chip) {
 				this.emptyBoard();
 				this.changeTurn();
 				return voice;
+				break;
+			
+			case "4":
+				//Pause.
+				this.pauseMenu();
 				break;
 		}
 		return "void";
@@ -426,12 +514,18 @@ var Board = function (Chip) {
 	}
 	
 	//Alternates between each player for the next turn.
-	//Or if dontChange, just return which would be the next player.
+	//If dontChange, just return which would be the next player.
+	//Or if a Chip is passed as dontChange, it will return the opposite player.
 	this.changeTurn = function (dontChange) {
 		dontChange = dontChange || false;
+		if (["W", "B"].indexOf(dontChange) > -1) {
+			var previousChip = dontChange;
+		} else {
+			var previousChip = this.Chip;
+		}
 		var otherChip, otherColor;
 		
-		if (this.Chip == "B") {
+		if (previousChip == "B") {
 			otherChip = "W";
 			otherColor = "Whites";
 		} else {
@@ -503,7 +597,7 @@ var Board = function (Chip) {
 	}
 	
 	//First "AI" level. Pick a random empty square from a list.
-	this.randomIA = function () {
+	this.randomAI = function () {
 		var empties = this.listEmptySquares();
 		var choice = parseInt(Math.random() * empties.length); //Multiply random per possibilities. The old way.
 		return empties[choice];
@@ -537,7 +631,6 @@ var Board = function (Chip) {
 						parentThis.failCount += 1;
 						turnResult = "unheard";
 					}
-					
 				}
 				console.log(parentThis.showBoard());
 				parentThis.micBusy = false; //Free microphone and get ready for the next turn.
@@ -555,7 +648,7 @@ var Board = function (Chip) {
 		
 		//Mandatory timed loop to work over Javascript asynchronous nature. Deal with it (until I know a cleaner way).
 		var waitPlease = setInterval(function () {
-			if (parentThis.micBusy == false) { //Game started or microphone finished. Come.
+			if (parentThis.micBusy == false && parentThis.pause == false) { //Game started or microphone finished. Come.
 				if (parentThis.failCount >= 4) { //Too many recognition errors. Quit loop and, therefore, application.
 						parentThis.audioQueue([parentThis.Voice["not-working"]], 1);
 						clearInterval(waitPlease);
@@ -592,7 +685,7 @@ var Board = function (Chip) {
 								anotherVoice.start();
 								break;
 							case 1: //ARGH! Tougher than I thought. 
-								Target = parentThis.randomIA();
+								Target = parentThis.randomAI();
 								turnResult = parentThis.basicTurnFlowWithReturn(Target);
 								parentThis.micBusy = false;
 								break;
@@ -610,6 +703,45 @@ var Board = function (Chip) {
 	this.mainMenu = function() {
 		var words = dictMainMenu;
 		//Mostrar descripción y opciones disponibles y esperar respuesta.
+	}
+	
+	//Shut up until player says "continue".
+	this.pauseMenu = function() {
+		parentThis.pause = true;
+		var anyError = "";
+		var voicePause = new webkitSpeechRecognition();
+		voicePause.lang = this.language;
+		voicePause.continuous = false;
+		
+		voicePause.onresult = function(event) {
+			if (event.results.length > 0) {
+				phrase = event.results[0][0].transcript;
+				var command = parentThis.compareCommand(phrase, parentThis.dictPauseMenu);
+				if (command == 0) { //"Continue"
+					parentThis.pause = false;
+					parentThis.micBusy = false;
+				}
+			}
+		}
+		
+		//Best method I got.
+		voicePause.onerror = function(event) {
+			anyError = event.error;
+		}
+		
+		//If there was an error or simply there was no speech, listen again.
+		voicePause.onend = function() {
+			if (anyError != "") {
+				voicePause.stop();
+				anyError = "";
+				voicePause.start();
+			}
+		}
+		
+		this.audioQueue([this.Voice["pause"]], 100, function() {
+			parentThis.micBusy = true;
+			voicePause.start();
+		});
 	}
 	
 	//Another attempt to put everything in a FIFO queue. Still no good.
@@ -667,12 +799,23 @@ var Board = function (Chip) {
 		if (this.microphoneWorks == false) {
 			this.checkMicrophone();
 		}
-		var letsPlay = setInterval(function() {
+		var playersChosen = setInterval(function() {
 			if (parentThis.microphoneWorks == true) {
-				parentThis.turnFlowWithVoiceAuto();
+				if (parentThis.players["set"] == false) {
+					if (parentThis.micBusy == false) {
+						parentThis.chooseAI();
+					}
+				} else {
+					clearInterval(playersChosen);
+				}
+			}
+		}, 250);
+		var letsPlay = setInterval(function() {
+			if (parentThis.microphoneWorks == true && parentThis.players["set"] == true) {
+				parentThis.turnFlowWithVoiceAuto(); //All done.
 				clearInterval(letsPlay);
 			}
-		}, 100);
+		}, 300);
 		
 	}
 	
