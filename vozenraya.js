@@ -44,7 +44,7 @@ var Board = function (Chip) {
 	}
 	
 	//An empty board.
-	this.Squares = [["X", "X", "X"], ["X", "X", "X"], ["X", "X", "X"]];
+	this.Squares = this.emptySquares = [["X", "X", "X"], ["X", "X", "X"], ["X", "X", "X"]];
 	
 	var parentThis = this; //Never forget the main object.
 	
@@ -58,13 +58,13 @@ var Board = function (Chip) {
 	this.mainQueue = [];
 	this.mainBusy = false; //Semaphore, basically.
 	this.pause = false;
-	this.microphoneWorks = this.debug;
+	this.microphoneWorks = true;//this.debug;
 	this.failCount = 0;
 	this.micBusy = false;
 	this.lastWinner = ["X", 0];
-	this.fastGame = this.debug;
+	this.fastGame = false;
 	if (this.debug) {
-		this.players = {"B": 0, "W": 1, "set": true}; //0 = human. 1+ = IA.
+		this.players = {"B": 0, "W": 2, "set": true}; //0 = human. 1+ = IA.
 	} else {
 		this.players = {"B": 0, "W": 0, "set": false};
 	}
@@ -215,10 +215,10 @@ var Board = function (Chip) {
 					} else {
 						//I'll randomly choose your color.
 						var queue = [parentThis.Voice["choose-ai"], parentThis.Voice[parentThis.changeTurn(true)[1]]];
-						if (choose == 2) {
+						/*if (choose == 2) {
 							parentThis.players[partner] = 1; //Not implemented yet.
 							queue.unshift(parentThis.Voice["not-implemented"]);
-						}
+						}*/
 						parentThis.audioQueue(queue, 100,
 											  function() { parentThis.micBusy = false; parentThis.players["set"] = true; });
 					}
@@ -420,6 +420,43 @@ var Board = function (Chip) {
 		//this.changeTurn();
 	}
 	
+	//Retrieve a horizontal line as an array. Easy.
+	this.horizontalLine = function(row) {
+		return this.Squares[row];
+	}
+	
+	//Retrieve a vertical line as an array. Not so easy.
+	this.verticalLine = function(column) {
+		var result = [];
+		for (var i = 0; i < this.Squares.length; i++) {
+			result.push(this.Squares[i][column]);
+		}
+		return result;
+	}
+	
+	//Retrieve a diagonal line as an array. Not so easy, either.
+	this.diagonalLine = function(first) {
+		var result = [];
+		if (first) { //From upper-left.
+			for (var i = 0; i < this.Squares.length; i++) {
+				result.push(this.Squares[i][i]);
+			}
+		} else { //From upper-right.
+			for (var i = 0; i< this.Squares.length; i++) {
+				result.push(this.Squares[i][this.Squares.length - i - 1]);
+			}
+		}
+		return result;
+	}
+	
+	this.countChips = function(row) {
+		var colors = {};
+		colors["X"] = row.filter(function(x) { return x == "X"; }).length;
+		colors["B"] = row.filter(function(x) { return x == "B"; }).length;
+		colors["W"] = row.filter(function(x) { return x == "W"; }).length;
+		return colors;
+	}
+	
 	//To check if there's a horizontal, vertical or diagonal line of the same color.
 	this.theresLine = function() {
 		var Squares = this.Squares;
@@ -428,21 +465,35 @@ var Board = function (Chip) {
 		for (var Row in [0, 1, 2]) {
 			if (Squares[Row][0] == Squares[Row][1] && Squares[Row][1] == Squares[Row][2]) {
 				if (Squares[Row][0] != "X") {
-					console.log(this.showBoard());
 					var resultado = "Victoria horizontal para " + this.Color;
-					console.log(resultado);
 					return "horizontal";
 				}
 			}
 		}
 		
+		//A failed attempt to work on bigger boards.
+		/*for (var Row = 0; Row < Squares.length; Row++) {
+			var content = this.horizontalLine(Row);
+			var firstColor = content[0];
+			if (firstColor == "X") {
+				continue;
+			}
+			var success = true;
+			for (var Square = 0; Square < Row.length; Square++) {
+				if (Row[Square] != firstColor) {
+					success = false;
+				}
+			}
+			if (success) {
+				return "horizontal";
+			}
+		}*/
+		
 		//Vertical
 		for (var Column in [0, 1, 2]) {
 			if (Squares[0][Column] == Squares[1][Column] && Squares[1][Column] == Squares[2][Column]) {
 				if (Squares[0][Column] != "X") {
-					console.log(this.showBoard());
 					var resultado = "Victoria vertical para " + this.Color;
-					console.log(resultado);
 					return "vertical";
 				}
 			}
@@ -489,6 +540,11 @@ var Board = function (Chip) {
 		}
 	}
 	
+	//Checks if no chip was put yet.
+	this.isBoardEmpty = function() {
+		return (this.Squares == this.emptySquares);
+	}
+	
 	//Forms an array with every empty position. Useful for AI.
 	this.listEmptySquares = function () {
 		var empties = [];
@@ -496,7 +552,7 @@ var Board = function (Chip) {
 		for (var row in Squares) {
 			for (var column in Squares[row]) {
 				if (!(this.isOccupied(row, column))) {
-					empties.push([row, column]); //Row and column as a sub-array.
+					empties.push([parseInt(row), parseInt(column)]); //Row and column as a sub-array.
 				}
 			}
 		}
@@ -558,7 +614,7 @@ var Board = function (Chip) {
 	this.basicTurnFlowWithReturn = function(Target) {
 		var turnResult = "success";
 		if (!(this.isOccupied(Target[0], Target[1]))) {
-			this.putChip(this.Chip, Target[0], Target[1]); //Succesful chip.
+			this.putChip(this.Chip, Target[0], Target[1]); //Successful chip.
 			
 			var line = this.theresLine();
 			var tie = this.theresTie();
@@ -579,7 +635,7 @@ var Board = function (Chip) {
 			turnResult = "busy";
 		}
 		
-		if (this.fastGame) {
+		if ((this.fastGame == true) && (this.players[this.Chip] == 0)) {
 			return turnResult; //Just say if there was a line or not.
 		} else {
 			var row = parseInt(Target[0]) + 1;
@@ -601,6 +657,122 @@ var Board = function (Chip) {
 		var empties = this.listEmptySquares();
 		var choice = parseInt(Math.random() * empties.length); //Multiply random per possibilities. The old way.
 		return empties[choice];
+	}
+	
+	//Here comes auto-business. First list all possibilities, each with a priority. Finally return the better position.
+	this.hardAI = function () {
+		var empties = this.listEmptySquares();
+		var own = this.Chip;
+		var enemy = this.changeTurn(own);
+		var options = []; //[row, square, priority (=< 100)]
+		var destination = [];
+		var maxSquare = this.Squares.length - 1;
+		
+		//Center free yet? The center is the best square.
+		if (!(this.isOccupied(1, 1))) {
+			options.push([1, 1, 95]);
+		}
+		
+		//If there's a line almost done, go for it. Be it own or enemy's.
+		//Substract priority if enemy's.
+		//Check every row and every column. If there are 2 chips of the same color, go!
+		for (var i = 0; i < this.Squares.length; i++) {
+			console.log(String(i) + own);
+		//Horizontals.
+			var row = this.horizontalLine(i);
+			var colors = this.countChips(row);
+			if (colors["X"] == 1) {
+				console.log(colors);
+				if (colors[own] == 2) {
+					//Put chip on X. 100.
+					options.push([i, row.indexOf("X"), 100]);
+				} else if (colors[enemy] == 2) {
+					//Put chip on X. 80.
+					options.push([i, row.indexOf("X"), 80]);
+				}
+			}
+			
+		//Verticals.
+			var column = this.verticalLine(i);
+			colors = this.countChips(column);
+			if (colors["X"] == 1) {
+				console.log(colors);
+				if (colors[own] == 2) {
+					//Put chip on X. 100.
+					options.push([column.indexOf("X"), i, 100]);
+				} else if (colors[enemy] == 2) {
+					//Put chip on X. 80.
+					options.push([column.indexOf("X"), i, 80]);
+				}
+			}
+		}
+		
+		//Diagonal upper-left.
+		var diagonal = this.diagonalLine(true);
+		var colors = this.countChips(diagonal);
+		if (colors["X"] == 1) {
+			console.log(colors);
+			if (colors[own] == 2) {
+				//Put chip on X. 100.
+				options.push([diagonal.indexOf("X"), diagonal.indexOf("X"), 100]);
+			} else if (colors[enemy] == 2) {
+				//Put chip on X. 80.
+				options.push([diagonal.indexOf("X"), diagonal.indexOf("X"), 80]);
+			}
+		}
+		
+		//Diagonal upper-right.
+		diagonal = this.diagonalLine(false);
+		colors = this.countChips(diagonal);
+		if (colors["X"] == 1) {
+			console.log(colors);
+			var position = diagonal.indexOf("X");
+			if (colors[own] == 2) {
+				//Put chip on X. 100.
+				options.push([position, diagonal.length - position - 1, 100]);
+			} else if (colors[enemy] == 2) {
+				//Put chip on X. 80.
+				options.push([position, diagonal.length - position - 1, 80]);
+			}
+		}
+		
+		//Look for free and occupied corners.
+		var corners = [[0, 0], [0, maxSquare], [maxSquare, 0], [maxSquare, maxSquare]];
+		for (var i in corners) {
+			var row = corners[i][0];
+			var column = corners[i][1];
+			if (this.Squares[row][column] == "X") {
+				options.push([row, column, 50]);
+			}
+		}
+		
+		//Now let the computer decide.
+		if (options.length > 0) {
+			var better = 0;
+			var choice = [];
+			
+			//Pick the best quality solutions.
+			for (var i = 0; i < options.length; i++) {
+				if (options[i][2] > better) {
+					better = options[i][2];
+				}
+			}
+			
+			//List them.
+			for (var i = 0; i < options.length; i++) {
+				if (options[i][2] == better) {
+					choice.push([options[i][0], options[i][1]]);
+				}
+			}
+			
+			//And choose any of them (if there's more than one).
+			var output = choice[parseInt(Math.random() * choice.length)];
+		} else { //If no better option, random.
+			var output = this.randomAI();
+		}
+		console.log(options);
+		console.log(output);
+		return output;
 	}
 	
 	//Also deprecated. For the manual "Voice" button.
@@ -680,12 +852,16 @@ var Board = function (Chip) {
 					//Now play everything. Later listen to the mic, or get the AI working, to put the next chip.
 					parentThis.audioQueue(voiceQueue, 200, function() {
 						switch (parentThis.players[parentThis.Chip]) {
-							//case
 							case 0:
 								anotherVoice.start();
 								break;
 							case 1: //ARGH! Tougher than I thought. 
 								Target = parentThis.randomAI();
+								turnResult = parentThis.basicTurnFlowWithReturn(Target);
+								parentThis.micBusy = false;
+								break;
+							case 2: //ARGH! Tougher than I thought. 
+								Target = parentThis.hardAI();
 								turnResult = parentThis.basicTurnFlowWithReturn(Target);
 								parentThis.micBusy = false;
 								break;
