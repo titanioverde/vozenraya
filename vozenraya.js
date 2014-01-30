@@ -12,7 +12,7 @@ var dictColumns = [dictA, dictB, dictC];
 var dictHelp = ["ayuda"];
 
 var dictStart = ["comenzar"];
-var dictHuman = ["humano"];
+var dictHuman = ["humano", "tu mano", "rumano"];
 var dictAIrandom = ["aleatorio"];
 var dictAIhard = ["difícil", "difísil"];
 
@@ -55,16 +55,23 @@ var Board = function (Chip) {
 		this.debug = false;
 	}
 	
+	//Returns a cookie value. Code taken from https://developer.mozilla.org/en-US/docs/Web/API/document.cookie
+	this.retrieveCookie = function(key) {
+		return decodeURIComponent(document.cookie.replace(new RegExp("(?:(?:^|.*;)\\s*" + encodeURIComponent(key).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*([^;]*).*$)|^.*$"), "$1")) || null;
+	}
+	
 	this.mainQueue = [];
 	this.mainBusy = false; //Semaphore, basically.
 	this.pause = false;
-	this.microphoneWorks = true;//this.debug;
+	this.microphoneWorks = this.retrieveCookie("microphone") || false;//this.debug;
 	this.failCount = 0;
 	this.micBusy = false;
 	this.lastWinner = ["X", 0];
+	this.gamesSum = this.retrieveCookie("gamesSum") || 0;
 	this.fastGame = false;
 	if (this.debug) {
 		this.players = {"B": 0, "W": 2, "set": true}; //0 = human. 1+ = IA.
+		this.microphoneWorks = true;
 	} else {
 		this.players = {"B": 0, "W": 0, "set": false};
 	}
@@ -127,6 +134,7 @@ var Board = function (Chip) {
 			document.getElementById("voiceresult").value = phrase;
 		}
 	}
+
 	
 	//To execute at first if mic wasn't tested before. The user must say three words
 	this.checkMicrophone = function() {
@@ -143,6 +151,7 @@ var Board = function (Chip) {
 					parentThis.failCount += 1;
 				} else { //All clear.
 					parentThis.microphoneWorks = true;
+					document.cookie = "microphone=true; max-age=2592000";
 					queue = [parentThis.Voice["check-mic-ok"],
 							 parentThis.Voice["general-help"],
 							 parentThis.Voice["available-actions"],
@@ -168,6 +177,7 @@ var Board = function (Chip) {
 					if (parentThis.micBusy == false) {
 						if (parentThis.failCount >= 3) { //Too much recognition errors? I quit.
 							parentThis.audioQueue([parentThis.Voice["not-working"]], 1);
+							document.cookie = "microphone=false;max-age=1";
 							clearInterval(forTheCheck);
 						} else { //Start!
 							parentThis.micBusy = true;
@@ -823,6 +833,7 @@ var Board = function (Chip) {
 			if (parentThis.micBusy == false && parentThis.pause == false) { //Game started or microphone finished. Come.
 				if (parentThis.failCount >= 4) { //Too many recognition errors. Quit loop and, therefore, application.
 						parentThis.audioQueue([parentThis.Voice["not-working"]], 1);
+						document.cookie = "microphone=false;max-age=1";
 						clearInterval(waitPlease);
 				} else {
 					parentThis.micBusy = true; //While true, speech rec won't start again.
@@ -839,9 +850,13 @@ var Board = function (Chip) {
 						var otherColor = parentThis.changeTurn(true)[1];
 						voiceQueue.push(parentThis.Voice[otherColor]);
 						voiceQueue.push(parentThis.Voice["start"]);
+						parentThis.gamesSum += 1;
+						document.cookie = "gamesSum=" + parentThis.gamesSum + ";max-age=2592000";
 					}
 					if ("tie" == turnResult[2]) {
 						voiceQueue.push(parentThis.Voice["start"]);
+						parentThis.gamesSum += 1;
+						document.cookie = "gamesSum=" + parentThis.gamesSum + ";max-age=2592000";
 					} //Extra voice if game has ended.
 					
 					//Next turn for...
@@ -976,7 +991,7 @@ var Board = function (Chip) {
 			this.checkMicrophone();
 		}
 		var playersChosen = setInterval(function() {
-			if (parentThis.microphoneWorks == true) {
+			if (parentThis.microphoneWorks) {
 				if (parentThis.players["set"] == false) {
 					if (parentThis.micBusy == false) {
 						parentThis.chooseAI();
@@ -987,7 +1002,7 @@ var Board = function (Chip) {
 			}
 		}, 250);
 		var letsPlay = setInterval(function() {
-			if (parentThis.microphoneWorks == true && parentThis.players["set"] == true) {
+			if (parentThis.microphoneWorks && parentThis.players["set"]) {
 				parentThis.turnFlowWithVoiceAuto(); //All done.
 				clearInterval(letsPlay);
 			}
