@@ -67,8 +67,14 @@ var Board = function (Chip) {
 	this.failCount = 0;
 	this.micBusy = false;
 	this.lastWinner = ["X", 0];
-	this.gamesSum = this.retrieveCookie("gamesSum") || 0;
-	this.fastGame = false;
+	this.gamesSum = parseInt(this.retrieveCookie("gamesSum")) || 0;
+	
+	if (this.gamesSum >= 10) {
+		this.fastGame = true;
+	} else {
+		this.fastGame = false;
+	}
+		
 	if (this.debug) {
 		this.players = {"B": 0, "W": 2, "set": true}; //0 = human. 1+ = IA.
 		this.microphoneWorks = true;
@@ -80,15 +86,16 @@ var Board = function (Chip) {
 	Function.prototype.kind = "function";
 	
 	//Voice sample repository.
-	this.VoicePath = "voice_" + this.language + "/";
+	this.VoicePath = "voice/" + this.language + "/";
 	this.SoundPath = "sound/"
 	this.Voice = {
-		"5-seconds": new Audio(this.VoicePath + "5-seconds.ogg"),
 		"welcome": new Audio(this.VoicePath + "welcome.ogg"),
+		"5-seconds": new Audio(this.VoicePath + "5-seconds.ogg"),
 		"check-mic": new Audio(this.VoicePath + "check-mic.ogg"),
 		"check-mic-ok": new Audio(this.VoicePath + "check-mic-ok.ogg"),
 		"check-mic-fail": new Audio(this.VoicePath + "check-mic-fail.ogg"),
 		"choose-player": new Audio(this.VoicePath + "choose-player.ogg"),
+		"choose-player-fast": new Audio(this.VoicePath + "choose-player-fast.ogg"),
 		"choose-human": new Audio(this.VoicePath + "choose-human.ogg"),
 		"choose-ai": new Audio(this.VoicePath + "choose-ai.ogg"),
 		"first-blacks": new Audio(this.VoicePath + "first-blacks.ogg"),
@@ -121,7 +128,8 @@ var Board = function (Chip) {
 		"put-help": new Audio(this.VoicePath + "put-help.ogg"),
 		"available-actions": new Audio(this.VoicePath + "available-actions.ogg"),
 		"play-menu": new Audio(this.VoicePath + "play-menu.ogg"),
-		"not-implemented": new Audio(this.VoicePath + "not-implemented.ogg")
+		"not-implemented": new Audio(this.VoicePath + "not-implemented.ogg"),
+		"credits": new Audio(this.VoicePath + "credits.ogg")
 	}
 
 	//A generic voice recognition object (despite there are other objects like this later).
@@ -216,6 +224,7 @@ var Board = function (Chip) {
 				if (choose != -1) {
 					var partner = ["B", "W"][Math.round(Math.random())];
 					parentThis.players[partner] = parseInt(choose);
+					console.log(partner);
 					
 					if (choose == 0) {
 						//Humans, choose a color in 5 seconds. Blacks start first.
@@ -224,7 +233,7 @@ var Board = function (Chip) {
 											  function() { parentThis.micBusy = false; parentThis.players["set"] = true; });
 					} else {
 						//I'll randomly choose your color.
-						var queue = [parentThis.Voice["choose-ai"], parentThis.Voice[parentThis.changeTurn(true)[1]]];
+						var queue = [parentThis.Voice["choose-ai"], parentThis.Voice[parentThis.changeTurn(partner)[1]]];
 						/*if (choose == 2) {
 							parentThis.players[partner] = 1; //Not implemented yet.
 							queue.unshift(parentThis.Voice["not-implemented"]);
@@ -244,7 +253,13 @@ var Board = function (Chip) {
 			}
 		}
 		
-		this.audioQueue([this.Voice["choose-player"]], 100, function() {
+		if (this.fastGame) {
+			var menu = "choose-player-fast";
+		} else {
+			var menu = "choose-player";
+		}
+		
+		this.audioQueue([this.Voice[menu]], 100, function() {
 			anotherVoice.start();
 			var forTheCheck = setInterval(function() {
 				if (parentThis.players["set"] == false) {
@@ -257,6 +272,11 @@ var Board = function (Chip) {
 				}
 			}, 100);
 		});
+	}
+	
+	
+	this.over10Games = function() {
+		this.fastGame = true;
 	}
 	
 	//To retrieve the current board as a string.
@@ -645,13 +665,9 @@ var Board = function (Chip) {
 			turnResult = "busy";
 		}
 		
-		if ((this.fastGame == true) && (this.players[this.Chip] == 0)) {
-			return turnResult; //Just say if there was a line or not.
-		} else {
-			var row = parseInt(Target[0]) + 1;
-			var column = parseInt(Target[1]) + 1;
-			return ["row" + row, "column" + column, turnResult]; //Pronounce position and result.
-		}
+		var row = parseInt(Target[0]) + 1;
+		var column = parseInt(Target[1]) + 1;
+		return ["row" + row, "column" + column, turnResult]; //Pronounce position and result.
 	}
 	
 	//Useless right now for talkative game.
@@ -833,7 +849,7 @@ var Board = function (Chip) {
 			if (parentThis.micBusy == false && parentThis.pause == false) { //Game started or microphone finished. Come.
 				if (parentThis.failCount >= 4) { //Too many recognition errors. Quit loop and, therefore, application.
 						parentThis.audioQueue([parentThis.Voice["not-working"]], 1);
-						document.cookie = "microphone=false;max-age=1";
+						document.cookie = "microphone=false;max-age=1"; //Make sure to check mic the next time.
 						clearInterval(waitPlease);
 				} else {
 					parentThis.micBusy = true; //While true, speech rec won't start again.
@@ -849,14 +865,24 @@ var Board = function (Chip) {
 					if (["vertical", "horizontal", "diagonal"].indexOf(turnResult[2]) > -1) {
 						var otherColor = parentThis.changeTurn(true)[1];
 						voiceQueue.push(parentThis.Voice[otherColor]);
-						voiceQueue.push(parentThis.Voice["start"]);
 						parentThis.gamesSum += 1;
 						document.cookie = "gamesSum=" + parentThis.gamesSum + ";max-age=2592000";
+						document.cookie = "microphone=true; max-age=2592000"; //Refresh!
+						if (parentThis.gamesSum == 10) {
+							parentThis.fastGame = true;
+							voiceQueue.push(parentThis.Voice["credits"]);
+						}
+						voiceQueue.push(parentThis.Voice["start"]);
 					}
 					if ("tie" == turnResult[2]) {
-						voiceQueue.push(parentThis.Voice["start"]);
 						parentThis.gamesSum += 1;
 						document.cookie = "gamesSum=" + parentThis.gamesSum + ";max-age=2592000";
+						document.cookie = "microphone=true; max-age=2592000";
+						if (parentThis.gamesSum == 10) {
+							parentThis.fastGame = true;
+							voiceQueue.push(parentThis.Voice["credits"]);
+						}
+						voiceQueue.push(parentThis.Voice["start"]);
 					} //Extra voice if game has ended.
 					
 					//Next turn for...
@@ -867,15 +893,15 @@ var Board = function (Chip) {
 					//Now play everything. Later listen to the mic, or get the AI working, to put the next chip.
 					parentThis.audioQueue(voiceQueue, 200, function() {
 						switch (parentThis.players[parentThis.Chip]) {
-							case 0:
+							case 0: //Human.
 								anotherVoice.start();
 								break;
-							case 1: //ARGH! Tougher than I thought. 
+							case 1: //Random.
 								Target = parentThis.randomAI();
 								turnResult = parentThis.basicTurnFlowWithReturn(Target);
 								parentThis.micBusy = false;
 								break;
-							case 2: //ARGH! Tougher than I thought. 
+							case 2: //Hard.
 								Target = parentThis.hardAI();
 								turnResult = parentThis.basicTurnFlowWithReturn(Target);
 								parentThis.micBusy = false;
@@ -886,8 +912,7 @@ var Board = function (Chip) {
 				}
 			}
 		}, 100);
-		//Chromium stops recognizing when no voice detected during some seconds.
-		
+		//Chromium stops recognizing when no voice was detected during some seconds.
 	}
 	
 	//Future interactiveness.
