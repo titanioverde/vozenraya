@@ -19,11 +19,10 @@ var dictAIhard = ["difícil", "difísil"];
 var dictPlayer = [dictHuman, dictAIrandom, dictAIhard];
 
 var dictCheck = ["revisar"];
-var dictPut = ["colocar"];
 var dictGiveUp = ["abandonar"];
 var dictPause = ["pausa", "va a usar", "va usa"];
 
-var dictPlayMenu = [dictHelp, dictCheck, dictPut, dictGiveUp, dictPause];
+var dictPlayMenu = [dictHelp, dictCheck, dictGiveUp, dictPause];
 
 var dictContinue = ["continuar"];
 var dictExit = ["salir", "salí"];
@@ -90,7 +89,9 @@ var Board = function (Chip) {
 	this.SoundPath = "sound/"
 	this.Voice = {
 		"welcome": new Audio(this.VoicePath + "welcome.ogg"),
-		"5-seconds": new Audio(this.VoicePath + "5-seconds.ogg"),
+		"5-seconds": new Audio(this.SoundPath + "5-seconds.ogg"),
+		"speak-now": new Audio(this.SoundPath + "speak-now.wav"),
+		"instructions": new Audio(this.VoicePath + "instructions.ogg"),
 		"check-mic": new Audio(this.VoicePath + "check-mic.ogg"),
 		"check-mic-ok": new Audio(this.VoicePath + "check-mic-ok.ogg"),
 		"check-mic-fail": new Audio(this.VoicePath + "check-mic-fail.ogg"),
@@ -142,7 +143,6 @@ var Board = function (Chip) {
 			document.getElementById("voiceresult").value = phrase;
 		}
 	}
-
 	
 	//To execute at first if mic wasn't tested before. The user must say three words
 	this.checkMicrophone = function() {
@@ -161,10 +161,7 @@ var Board = function (Chip) {
 					parentThis.microphoneWorks = true;
 					document.cookie = "microphone=true; max-age=2592000";
 					queue = [parentThis.Voice["check-mic-ok"],
-							 parentThis.Voice["general-help"],
-							 parentThis.Voice["available-actions"],
-							 parentThis.Voice["play-menu"],
-							 parentThis.Voice["start"]];
+							 parentThis.Voice["instructions"]];
 				}
 				parentThis.audioQueue(queue, 100, function() { parentThis.micBusy = false; });
 				//Play those voice samples, and free mic when finished.
@@ -189,6 +186,7 @@ var Board = function (Chip) {
 							clearInterval(forTheCheck);
 						} else { //Start!
 							parentThis.micBusy = true;
+							parentThis.Voice["speak-now"].play();
 							voiceTest.start();
 						}
 					}
@@ -260,11 +258,13 @@ var Board = function (Chip) {
 		}
 		
 		this.audioQueue([this.Voice[menu]], 100, function() {
+			parentThis.Voice["speak-now"].play();
 			anotherVoice.start();
 			var forTheCheck = setInterval(function() {
 				if (parentThis.players["set"] == false) {
 					if (parentThis.micBusy == false) {
 						parentThis.micBusy = true;
+						parentThis.Voice["speak-now"].play();
 						anotherVoice.start();
 					}
 				} else {
@@ -319,7 +319,7 @@ var Board = function (Chip) {
 		switch (index) {
 			case "0":
 				//Bring some help.
-				return [this.Voice["available-actions"], this.Voice["play-menu"]];
+				return ["instructions"];
 				break;
 				
 			case "1":
@@ -328,19 +328,14 @@ var Board = function (Chip) {
 				break;
 			
 			case "2":
-				//Instructions. How to put a chip.
-				return [this.Voice["put-help"]];
-				break;
-			
-			case "3":
 				//Give up.
-				var voice = [this.Voice[this.Color], this.Voice["surrender"], this.Voice["start"]];
+				var voice = [this.Color, "surrender", "start"];
 				this.emptyBoard();
 				this.changeTurn();
 				return voice;
 				break;
 			
-			case "4":
+			case "3":
 				//Pause.
 				this.pauseMenu();
 				break;
@@ -803,6 +798,7 @@ var Board = function (Chip) {
 	
 	//Also deprecated. For the manual "Voice" button.
 	this.turnFlowWithVoice = function(sample) {
+		this.Voice["speak-now"].play();
 		this.voiceReceiver.start();
 		var Target = this.recognizePosition(sample);
 		var turnResult = this.basicTurnFlow(Target);
@@ -854,6 +850,7 @@ var Board = function (Chip) {
 				} else {
 					parentThis.micBusy = true; //While true, speech rec won't start again.
 					var voiceQueue = []; //Later it will be filled with voice samples to play.
+					console.log(turnResult);
 					if (["Array", "object"].indexOf(typeof(turnResult)) > -1) { //More than one sample for turn result.
 						for (var i in turnResult) {
 							voiceQueue.push(parentThis.Voice[turnResult[i]]);
@@ -894,6 +891,7 @@ var Board = function (Chip) {
 					parentThis.audioQueue(voiceQueue, 200, function() {
 						switch (parentThis.players[parentThis.Chip]) {
 							case 0: //Human.
+								parentThis.Voice["speak-now"].play();
 								anotherVoice.start();
 								break;
 							case 1: //Random.
