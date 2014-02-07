@@ -2,36 +2,35 @@ var dict1 = ["uno", "1"];
 var dict2 = ["dos", "2", "tos"];
 var dict3 = ["tres", "3", "crees"];
 
-var dictA = ["a", "ah"];
-var dictB = ["b", "be"];
-var dictC = ["c", "ce", "sé", "se", "ze"];
-
-var dictRows = [dict1, dict2, dict3];
-var dictColumns = [dictA, dictB, dictC];
 
 var dictHelp = ["ayuda"];
-
-var dictStart = ["comenzar"];
 var dictHuman = ["humano", "tu mano", "rumano"];
 var dictAIrandom = ["aleatorio"];
 var dictAIhard = ["difícil", "difísil"];
 
-var dictPlayer = [dictHuman, dictAIrandom, dictAIhard];
 
 var dictCheck = ["revisar"];
 var dictGiveUp = ["abandonar"];
 var dictPause = ["pausa", "va a usar", "va usa"];
 
-var dictPlayMenu = [dictHelp, dictCheck, dictGiveUp, dictPause];
 
 var dictContinue = ["continuar"];
 var dictExit = ["salir", "salí"];
 
-var dictPauseMenu = [dictContinue, dictExit];
 
 
 var Board = function (Chip) {
 	this.language = "es-ES";
+	this.dictPath = "dict/";
+	
+	//Enter dictionaries from its respective file. Yes... inserting them like a script on the document.
+	var htmlFather = document.createElement("script");
+	htmlFather.src = this.dictPath + this.language + ".js";
+	document.head.appendChild(htmlFather);
+	var dictRows = [dict1, dict2, dict3];
+	var dictPlayer = [dictHuman, dictAIrandom, dictAIhard];
+	var dictPlayMenu = [dictHelp, dictCheck, dictGiveUp, dictPause];
+	var dictPauseMenu = [dictContinue, dictExit];
 	
 	//To select the first color, or to pick the default one.
 	this.Chip = Chip || "W";
@@ -82,50 +81,57 @@ var Board = function (Chip) {
 	//Voice sample repository.
 	this.VoicePath = "voice/" + this.language + "/";
 	this.SoundPath = "sound/"
-	this.Voice = {
-		"welcome": new Audio(this.VoicePath + "welcome.ogg"),
-		"5-seconds": new Audio(this.SoundPath + "5-seconds.ogg"),
-		"speak-now": new Audio(this.SoundPath + "speak-now.wav"),
-		"instructions": new Audio(this.VoicePath + "instructions.ogg"),
-		"check-mic": new Audio(this.VoicePath + "check-mic.ogg"),
-		"check-mic-ok": new Audio(this.VoicePath + "check-mic-ok.ogg"),
-		"check-mic-fail": new Audio(this.VoicePath + "check-mic-fail.ogg"),
-		"choose-player": new Audio(this.VoicePath + "choose-player.ogg"),
-		"choose-player-fast": new Audio(this.VoicePath + "choose-player-fast.ogg"),
-		"choose-human": new Audio(this.VoicePath + "choose-human.ogg"),
-		"choose-ai": new Audio(this.VoicePath + "choose-ai.ogg"),
-		"first-blacks": new Audio(this.VoicePath + "first-blacks.ogg"),
-		"not-working": new Audio(this.VoicePath + "not-working.ogg"),
-		"start": new Audio(this.VoicePath + "start.ogg"),
-		"pause": new Audio(this.VoicePath + "pause.ogg"),
-		"row1": new Audio(this.VoicePath + "row1.ogg"),
-		"row2": new Audio(this.VoicePath + "row2.ogg"),
-		"row3": new Audio(this.VoicePath + "row3.ogg"),
-		"column1": new Audio(this.VoicePath + "column1.ogg"),
-		"column2": new Audio(this.VoicePath + "column2.ogg"),
-		"column3": new Audio(this.VoicePath + "column3.ogg"),
-		"X": new Audio(this.VoicePath + "empty.ogg"),
-		"W": new Audio(this.VoicePath + "white.ogg"),
-		"B": new Audio(this.VoicePath + "black.ogg"),
-		"turnfor": new Audio(this.VoicePath + "turnfor.ogg"),
-		"Whites": new Audio(this.VoicePath + "whites.ogg"),
-		"Blacks": new Audio(this.VoicePath + "blacks.ogg"),
-		"horizontal": new Audio(this.VoicePath + "horizontal.ogg"),
-		"vertical": new Audio(this.VoicePath + "vertical.ogg"),
-		"diagonal": new Audio(this.VoicePath + "diagonal.ogg"),
-		"tie": new Audio(this.VoicePath + "tie.ogg"),
-		"surrender": new Audio(this.VoicePath + "surrender.ogg"),
-		"busy": new Audio(this.VoicePath + "busy.ogg"),
-		"success": new Audio(this.VoicePath + "success.ogg"),
-		"unheard": new Audio(this.VoicePath + "unheard.ogg"),
-		"silence": new Audio(this.VoicePath + "silence.ogg"),
-		"void": new Audio(this.VoicePath + "void.ogg"),
-		"general-help": new Audio(this.VoicePath + "general-help.ogg"),
-		"put-help": new Audio(this.VoicePath + "put-help.ogg"),
-		"available-actions": new Audio(this.VoicePath + "available-actions.ogg"),
-		"play-menu": new Audio(this.VoicePath + "play-menu.ogg"),
-		"not-implemented": new Audio(this.VoicePath + "not-implemented.ogg"),
-		"credits": new Audio(this.VoicePath + "credits.ogg")
+	if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+		this.Voice = {
+			"welcome": new Audio(this.VoicePath + "welcome.ogg"),
+			"5-seconds": new Audio(this.SoundPath + "5-seconds.ogg"),
+			"speak-now": new Audio(this.SoundPath + "speak-now.wav"),
+			"instructions": new Audio(this.VoicePath + "instructions.ogg"),
+			"check-mic": new Audio(this.VoicePath + "check-mic.ogg"),
+			"check-mic-ok": new Audio(this.VoicePath + "check-mic-ok.ogg"),
+			"check-mic-fail": new Audio(this.VoicePath + "check-mic-fail.ogg"),
+			"choose-player": new Audio(this.VoicePath + "choose-player.ogg"),
+			"choose-player-fast": new Audio(this.VoicePath + "choose-player-fast.ogg"),
+			"choose-human": new Audio(this.VoicePath + "choose-human.ogg"),
+			"choose-ai": new Audio(this.VoicePath + "choose-ai.ogg"),
+			"first-blacks": new Audio(this.VoicePath + "first-blacks.ogg"),
+			"not-working": new Audio(this.VoicePath + "not-working.ogg"),
+			"start": new Audio(this.VoicePath + "start.ogg"),
+			"pause": new Audio(this.VoicePath + "pause.ogg"),
+			"row1": new Audio(this.VoicePath + "row1.ogg"),
+			"row2": new Audio(this.VoicePath + "row2.ogg"),
+			"row3": new Audio(this.VoicePath + "row3.ogg"),
+			"column1": new Audio(this.VoicePath + "column1.ogg"),
+			"column2": new Audio(this.VoicePath + "column2.ogg"),
+			"column3": new Audio(this.VoicePath + "column3.ogg"),
+			"X": new Audio(this.VoicePath + "empty.ogg"),
+			"W": new Audio(this.VoicePath + "white.ogg"),
+			"B": new Audio(this.VoicePath + "black.ogg"),
+			"turnfor": new Audio(this.VoicePath + "turnfor.ogg"),
+			"Whites": new Audio(this.VoicePath + "whites.ogg"),
+			"Blacks": new Audio(this.VoicePath + "blacks.ogg"),
+			"horizontal": new Audio(this.VoicePath + "horizontal.ogg"),
+			"vertical": new Audio(this.VoicePath + "vertical.ogg"),
+			"diagonal": new Audio(this.VoicePath + "diagonal.ogg"),
+			"tie": new Audio(this.VoicePath + "tie.ogg"),
+			"surrender": new Audio(this.VoicePath + "surrender.ogg"),
+			"busy": new Audio(this.VoicePath + "busy.ogg"),
+			"success": new Audio(this.VoicePath + "success.ogg"),
+			"unheard": new Audio(this.VoicePath + "unheard.ogg"),
+			"silence": new Audio(this.VoicePath + "silence.ogg"),
+			"void": new Audio(this.VoicePath + "void.ogg"),
+			"general-help": new Audio(this.VoicePath + "general-help.ogg"),
+			"put-help": new Audio(this.VoicePath + "put-help.ogg"),
+			"available-actions": new Audio(this.VoicePath + "available-actions.ogg"),
+			"play-menu": new Audio(this.VoicePath + "play-menu.ogg"),
+			"not-implemented": new Audio(this.VoicePath + "not-implemented.ogg"),
+			"credits": new Audio(this.VoicePath + "credits.ogg")
+		}
+	} else {
+		//Not a compatible browser. :-( Better luck after some months.
+		this.micBusy = true;
+		var notCompatible = new Audio(this.VoicePath + "not-compatible.ogg");
+		notCompatible.play();
 	}
 	
 	//To manually add on the 'start' event of speech recognition objects.
@@ -760,8 +766,10 @@ var Board = function (Chip) {
 			if (event.results.length > 0) {
 				phrase1 = event.results[0][0].transcript;
 				Target1 = parentThis.recognizePosition(phrase1);
-				if (!(Target1[0] == -1 || Target1[1] == -1)) { //Both numbers are right?
-					turnResult = parentThis.basicTurnFlowWithReturn(Target1); //Process them. Put chip if possible.
+				if (Target1.length > 1) {
+					if (!(Target1[0] == -1 || Target1[1] == -1)) { //Both numbers are right?
+						turnResult = parentThis.basicTurnFlowWithReturn(Target1); //Process them. Put chip if possible.
+					}
 				} else { //They're not numbers!
 					var command = parentThis.compareCommand(phrase1, dictPlayMenu); //Compare pronounced word with command list.
 					if (command != "") {
@@ -771,6 +779,7 @@ var Board = function (Chip) {
 						turnResult = "unheard";
 					}
 				}
+				
 				parentThis.micBusy = false; //Free microphone and get ready for the next turn.
 			}
 		}
@@ -935,4 +944,6 @@ var Board = function (Chip) {
 		});
 }
 
-var Tablero1 = new Board();
+
+//Just create a Board object, and it will start right away. Like:
+//var Tablero1 = new Board();

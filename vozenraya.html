@@ -1,22 +1,12 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
 	<meta charset="utf-8" />
 	<title>Voz en Raya</title>
 </head>
 <body>
-	<p>Todas las salidas se imprimen en la consola del navegador. Firefox: Ctrl+Mayús+K o en el menú <i>Desarrollador web</i>. Chrome: Ctrl+Mayús+I o Menú, <i>Herramientas</i>, <i>Consola</i>.</p>
-	<p>Para jugar con un <strong>micrófono</strong> (solo en Chrome para escritorio, lamentablemente), pulsa Auto-voz. Te pedirá permiso, por lo menos, la primera vez. Pronuncia el número de fila y el número de columna seguidos ("uno tres"). Los resultados saldrán igualmente en la consola web. Repite el proceso para seguir jugando turno por turno.</p>
-	<p>Si no estás seguro de si funciona bien el reconocimiento de voz, puedes jugar paso a paso. Pulsa el botón <i>Voz</i>. Si el texto resultante es correcto, pulsa en <i>Turno</i>.</p>
-	<p>Alternativamente puedes jugar con diálogos emergentes. Haz clic en la consola, escribe <font color='teal'>Tablero1.startGame()</font> y pulsa Intro para comenzar una partida.</p>
-	<p id='contenido'>...</p>
 	<script src='vozenraya.js'></script>
-	
-	<input type='text' id='voiceresult' autofocus='1' />
-	<input type='button' onclick='Tablero1.startGameWithVoice()' value='Auto-voz' />
-	<input type='button' onclick='Tablero1.readBoard()' value='Leer tablero' />
-	<input type='button' onclick='Tablero1.voiceReceiver.start()' value='Voz' />
-	<input type='button' onclick="Tablero1.turnFlowWithVoice(document.getElementById('voiceresult').value)" value='Turno' />
-	<input type='button' onclick="Tablero1.micBusy = false;" value='Liberar micro' />
+	<h1>Voz En Raya</h1>
+	<script>var Tablero1 = new Board();</script>
 </body>
 </html>
