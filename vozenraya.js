@@ -644,6 +644,9 @@ var Board = function (Chip) {
 				this.emptyBoard(); //Default board.
 			}
 			this.changeTurn();
+			if (this.debug) {
+				console.log(this.Squares);
+			}
 		} else { //Oh my... That square was already taken.
 			turnResult = "busy";
 		}
@@ -793,7 +796,7 @@ var Board = function (Chip) {
 						turnResult = parentThis.basicTurnFlowWithReturn(Target1); //Process them. Put chip if possible.
 					}
 				} else { //They're not numbers!
-					var command = parentThis.compareCommand(phrase1, this.dictPlayMenu); //Compare pronounced word with command list.
+					var command = parentThis.compareCommand(phrase1, parentThis.dictPlayMenu); //Compare pronounced word with command list.
 					if (command != "") {
 						turnResult = parentThis.commandPlayMenu(command); //Play and/or do it.
 					} else { //Command or position not recognized.
