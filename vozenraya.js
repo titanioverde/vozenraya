@@ -1,36 +1,57 @@
-var dict1 = ["uno", "1"];
-var dict2 = ["dos", "2", "tos"];
-var dict3 = ["tres", "3", "crees"];
-
-
-var dictHelp = ["ayuda"];
-var dictHuman = ["humano", "tu mano", "rumano"];
-var dictAIrandom = ["aleatorio"];
-var dictAIhard = ["difícil", "difísil"];
-
-
-var dictCheck = ["revisar"];
-var dictGiveUp = ["abandonar"];
-var dictPause = ["pausa", "va a usar", "va usa"];
-
-
-var dictContinue = ["continuar"];
-var dictExit = ["salir", "salí"];
-
-
-
 var Board = function (Chip) {
-	this.language = "es-ES";
+	//this.language = navigator.language;
+	this.language = "es";
 	this.dictPath = "dict/";
+	this.VoicePath = "voice/" + this.language + "/";
+	this.SoundPath = "sound/";
 	
-	//Enter dictionaries from its respective file. Yes... inserting them like a script on the document.
-	var htmlFather = document.createElement("script");
-	htmlFather.src = this.dictPath + this.language + ".js";
-	document.head.appendChild(htmlFather);
-	var dictRows = [dict1, dict2, dict3];
-	var dictPlayer = [dictHuman, dictAIrandom, dictAIhard];
-	var dictPlayMenu = [dictHelp, dictCheck, dictGiveUp, dictPause];
-	var dictPauseMenu = [dictContinue, dictExit];
+	//To make sure if this language is ready in our game.
+	//Still useless due to async. I'm sick of JS natural async.
+	this.checkPath = function(url) {
+		var petition = new XMLHttpRequest();
+		petition.open("HEAD", url);
+		petition.timeout = 1000;
+		
+		try {
+			var status = petition.send();
+			if (status.status == 200) return true;
+		} catch(e) {
+			return false;
+		}
+		return false;
+	}
+	
+	//Enter dictionaries from its respective file.
+	//Yes... inserting them like a script on the document. Or that's what I'd want to.
+	this.loadDict = function() {
+		/*var htmlFather = document.createElement("script");
+		htmlFather.src = this.dictPath + this.language + ".js";
+		document.head.appendChild(htmlFather);*/
+		
+		this.dict1 = ["uno", "1"];
+		this.dict2 = ["dos", "2", "tos"];
+		this.dict3 = ["tres", "3", "crees"];
+		
+		this.dictHelp = ["ayuda"];
+		this.dictHuman = ["humano", "tu mano", "rumano"];
+		this.dictAIrandom = ["aleatorio"];
+		this.dictAIhard = ["difícil", "difísil"];
+		
+		this.dictCheck = ["revisar"];
+		this.dictGiveUp = ["abandonar"];
+		this.dictPause = ["pausa", "va a usar", "va usa"];
+		
+		this.dictContinue = ["continuar"];
+		this.dictExit = ["salir", "salí"];
+		
+		this.dictRows = [this.dict1, this.dict2, this.dict3];
+		this.dictPlayer = [this.dictHuman, this.dictAIrandom, this.dictAIhard];
+		this.dictPlayMenu = [this.dictHelp, this.dictCheck, this.dictGiveUp, this.dictPause];
+		this.dictPauseMenu = [this.dictContinue, this.dictExit];
+
+	}
+
+	
 	
 	//To select the first color, or to pick the default one.
 	this.Chip = Chip || "W";
@@ -79,59 +100,60 @@ var Board = function (Chip) {
 	}
 	
 	//Voice sample repository.
-	this.VoicePath = "voice/" + this.language + "/";
-	this.SoundPath = "sound/"
-	if (window.SpeechRecognition || window.webkitSpeechRecognition) {
-		this.Voice = {
-			"welcome": new Audio(this.VoicePath + "welcome.ogg"),
-			"5-seconds": new Audio(this.SoundPath + "5-seconds.ogg"),
-			"speak-now": new Audio(this.SoundPath + "speak-now.wav"),
-			"instructions": new Audio(this.VoicePath + "instructions.ogg"),
-			"check-mic": new Audio(this.VoicePath + "check-mic.ogg"),
-			"check-mic-ok": new Audio(this.VoicePath + "check-mic-ok.ogg"),
-			"check-mic-fail": new Audio(this.VoicePath + "check-mic-fail.ogg"),
-			"choose-player": new Audio(this.VoicePath + "choose-player.ogg"),
-			"choose-player-fast": new Audio(this.VoicePath + "choose-player-fast.ogg"),
-			"choose-human": new Audio(this.VoicePath + "choose-human.ogg"),
-			"choose-ai": new Audio(this.VoicePath + "choose-ai.ogg"),
-			"first-blacks": new Audio(this.VoicePath + "first-blacks.ogg"),
-			"not-working": new Audio(this.VoicePath + "not-working.ogg"),
-			"start": new Audio(this.VoicePath + "start.ogg"),
-			"pause": new Audio(this.VoicePath + "pause.ogg"),
-			"row1": new Audio(this.VoicePath + "row1.ogg"),
-			"row2": new Audio(this.VoicePath + "row2.ogg"),
-			"row3": new Audio(this.VoicePath + "row3.ogg"),
-			"column1": new Audio(this.VoicePath + "column1.ogg"),
-			"column2": new Audio(this.VoicePath + "column2.ogg"),
-			"column3": new Audio(this.VoicePath + "column3.ogg"),
-			"X": new Audio(this.VoicePath + "empty.ogg"),
-			"W": new Audio(this.VoicePath + "white.ogg"),
-			"B": new Audio(this.VoicePath + "black.ogg"),
-			"turnfor": new Audio(this.VoicePath + "turnfor.ogg"),
-			"Whites": new Audio(this.VoicePath + "whites.ogg"),
-			"Blacks": new Audio(this.VoicePath + "blacks.ogg"),
-			"horizontal": new Audio(this.VoicePath + "horizontal.ogg"),
-			"vertical": new Audio(this.VoicePath + "vertical.ogg"),
-			"diagonal": new Audio(this.VoicePath + "diagonal.ogg"),
-			"tie": new Audio(this.VoicePath + "tie.ogg"),
-			"surrender": new Audio(this.VoicePath + "surrender.ogg"),
-			"busy": new Audio(this.VoicePath + "busy.ogg"),
-			"success": new Audio(this.VoicePath + "success.ogg"),
-			"unheard": new Audio(this.VoicePath + "unheard.ogg"),
-			"silence": new Audio(this.VoicePath + "silence.ogg"),
-			"void": new Audio(this.VoicePath + "void.ogg"),
-			"general-help": new Audio(this.VoicePath + "general-help.ogg"),
-			"put-help": new Audio(this.VoicePath + "put-help.ogg"),
-			"available-actions": new Audio(this.VoicePath + "available-actions.ogg"),
-			"play-menu": new Audio(this.VoicePath + "play-menu.ogg"),
-			"not-implemented": new Audio(this.VoicePath + "not-implemented.ogg"),
-			"credits": new Audio(this.VoicePath + "credits.ogg")
+	this.loadVoice = function() {
+		if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+			this.Voice = {
+				"no-language": new Audio(this.SoundPath + "no-language.ogg"),
+				"welcome": new Audio(this.VoicePath + "welcome.ogg"),
+				"5-seconds": new Audio(this.SoundPath + "5-seconds.ogg"),
+				"speak-now": new Audio(this.SoundPath + "speak-now.wav"),
+				"instructions": new Audio(this.VoicePath + "instructions.ogg"),
+				"check-mic": new Audio(this.VoicePath + "check-mic.ogg"),
+				"check-mic-ok": new Audio(this.VoicePath + "check-mic-ok.ogg"),
+				"check-mic-fail": new Audio(this.VoicePath + "check-mic-fail.ogg"),
+				"choose-player": new Audio(this.VoicePath + "choose-player.ogg"),
+				"choose-player-fast": new Audio(this.VoicePath + "choose-player-fast.ogg"),
+				"choose-human": new Audio(this.VoicePath + "choose-human.ogg"),
+				"choose-ai": new Audio(this.VoicePath + "choose-ai.ogg"),
+				"first-blacks": new Audio(this.VoicePath + "first-blacks.ogg"),
+				"not-working": new Audio(this.VoicePath + "not-working.ogg"),
+				"start": new Audio(this.VoicePath + "start.ogg"),
+				"pause": new Audio(this.VoicePath + "pause.ogg"),
+				"row1": new Audio(this.VoicePath + "row1.ogg"),
+				"row2": new Audio(this.VoicePath + "row2.ogg"),
+				"row3": new Audio(this.VoicePath + "row3.ogg"),
+				"column1": new Audio(this.VoicePath + "column1.ogg"),
+				"column2": new Audio(this.VoicePath + "column2.ogg"),
+				"column3": new Audio(this.VoicePath + "column3.ogg"),
+				"X": new Audio(this.VoicePath + "empty.ogg"),
+				"W": new Audio(this.VoicePath + "white.ogg"),
+				"B": new Audio(this.VoicePath + "black.ogg"),
+				"turnfor": new Audio(this.VoicePath + "turnfor.ogg"),
+				"Whites": new Audio(this.VoicePath + "whites.ogg"),
+				"Blacks": new Audio(this.VoicePath + "blacks.ogg"),
+				"horizontal": new Audio(this.VoicePath + "horizontal.ogg"),
+				"vertical": new Audio(this.VoicePath + "vertical.ogg"),
+				"diagonal": new Audio(this.VoicePath + "diagonal.ogg"),
+				"tie": new Audio(this.VoicePath + "tie.ogg"),
+				"surrender": new Audio(this.VoicePath + "surrender.ogg"),
+				"busy": new Audio(this.VoicePath + "busy.ogg"),
+				"success": new Audio(this.VoicePath + "success.ogg"),
+				"unheard": new Audio(this.VoicePath + "unheard.ogg"),
+				"silence": new Audio(this.VoicePath + "silence.ogg"),
+				"void": new Audio(this.VoicePath + "void.ogg"),
+				"general-help": new Audio(this.VoicePath + "general-help.ogg"),
+				"put-help": new Audio(this.VoicePath + "put-help.ogg"),
+				"available-actions": new Audio(this.VoicePath + "available-actions.ogg"),
+				"play-menu": new Audio(this.VoicePath + "play-menu.ogg"),
+				"not-implemented": new Audio(this.VoicePath + "not-implemented.ogg"),
+				"credits": new Audio(this.VoicePath + "credits.ogg")
+			}
+		} else {
+			//Not a compatible browser. :-( Better luck after some months.
+			this.micBusy = true;
+			var notCompatible = new Audio(this.VoicePath + "not-compatible.ogg");
+			notCompatible.play();
 		}
-	} else {
-		//Not a compatible browser. :-( Better luck after some months.
-		this.micBusy = true;
-		var notCompatible = new Audio(this.VoicePath + "not-compatible.ogg");
-		notCompatible.play();
 	}
 	
 	//To manually add on the 'start' event of speech recognition objects.
@@ -226,7 +248,7 @@ var Board = function (Chip) {
 		anotherVoice.onresult = function(event) {
 			if (event.results.length > 0) {
 				phrase = event.results[0][0].transcript;
-				var choose = parentThis.compareCommand(phrase, dictPlayer);
+				var choose = parentThis.compareCommand(phrase, parentThis.dictPlayer);
 				if (choose != -1) {
 					var partner = ["B", "W"][Math.round(Math.random())];
 					parentThis.players[partner] = parseInt(choose);
@@ -293,8 +315,8 @@ var Board = function (Chip) {
 		var results = [];
 		for (var i in words) { //Word by word through the input array.
 			var found = -1;
-			for (var j in dictRows) { //Word by word through the recognition dictionaries.
-				if (dictRows[j].toString().indexOf(words[i]) > -1) {
+			for (var j in this.dictRows) { //Word by word through the recognition dictionaries.
+				if (this.dictRows[j].toString().indexOf(words[i]) > -1) {
 					found = j;
 				}
 			}
@@ -771,7 +793,7 @@ var Board = function (Chip) {
 						turnResult = parentThis.basicTurnFlowWithReturn(Target1); //Process them. Put chip if possible.
 					}
 				} else { //They're not numbers!
-					var command = parentThis.compareCommand(phrase1, dictPlayMenu); //Compare pronounced word with command list.
+					var command = parentThis.compareCommand(phrase1, this.dictPlayMenu); //Compare pronounced word with command list.
 					if (command != "") {
 						turnResult = parentThis.commandPlayMenu(command); //Play and/or do it.
 					} else { //Command or position not recognized.
@@ -938,10 +960,20 @@ var Board = function (Chip) {
 		
 	}
 	
-	//Page loaded. GO!!
-	this.audioQueue([this.Voice["welcome"]], 100, function() {
-		parentThis.startGameWithVoice();
+	this.salute = function() {
+		this.firstQueue = [this.Voice["welcome"]];
+		this.audioQueue(this.firstQueue, 100, function() {
+			parentThis.startGameWithVoice();
 		});
+
+	}
+	
+	//Page loaded. GO!!
+	this.loadDict();
+	this.loadVoice();
+	this.salute();
+	
+
 }
 
 
