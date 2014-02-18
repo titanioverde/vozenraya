@@ -1,25 +1,8 @@
-var Board = function (Chip) {
-	//this.language = navigator.language;
-	this.language = "es";
+var Board = function (Language, Chip) {
+	this.language = Language || "es";
 	this.dictPath = "dict/";
 	this.VoicePath = "voice/" + this.language + "/";
 	this.SoundPath = "sound/";
-	
-	//To make sure if this language is ready in our game.
-	//Still useless due to async. I'm sick of JS natural async.
-	this.checkPath = function(url) {
-		var petition = new XMLHttpRequest();
-		petition.open("HEAD", url);
-		petition.timeout = 1000;
-		
-		try {
-			var status = petition.send();
-			if (status.status == 200) return true;
-		} catch(e) {
-			return false;
-		}
-		return false;
-	}
 	
 	//Enter dictionaries from its respective file.
 	//Yes... inserting them like a script on the document. Or that's what I'd want to.
@@ -50,8 +33,6 @@ var Board = function (Chip) {
 		this.dictPauseMenu = [this.dictContinue, this.dictExit];
 
 	}
-
-	
 	
 	//To select the first color, or to pick the default one.
 	this.Chip = Chip || "W";
@@ -979,6 +960,31 @@ var Board = function (Chip) {
 
 }
 
+var BoardLoader = function() {
+	this.language = navigator.language;
+	
+	//To make sure if this language is ready in our game.
+	//Still useless due to async. I'm sick of JS natural async.
+	this.petition = new XMLHttpRequest();
+	this.petition.open("HEAD", "dict/" + this.language + ".js");
+	
+	this.petition.send();
+	var status = 1;
+	var preThis = this;
+	
+	var rightTime = setInterval(function () {
+		status = preThis.petition.status;
+		if (status == 200) {
+			clearInterval(rightTime);
+			var Tablero1 = new Board(preThis.language);
+		}
+		if (status == 404) {
+			clearInterval(rightTime);
+			var Tablero1 = new Board("es");
+		}
+	}, 60);
 
-//Just create a Board object, and it will start right away. Like:
-//var Tablero1 = new Board();
+}
+
+//Just create a BoardLoader object, and it will start right away. Like:
+//var Tablero0 = new BoardLoader();
