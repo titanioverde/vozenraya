@@ -9,9 +9,9 @@ var Board = function (Language, Chip) {
 	this.loadDict = function() {
 		/*var htmlFather = document.createElement("script");
 		htmlFather.src = this.dictPath + this.language + ".js";
-		document.head.appendChild(htmlFather);*/
+		document.body.appendChild(htmlFather);*/
 		
-		this.dict1 = ["uno", "1"];
+		/*this.dict1 = ["uno", "1"];
 		this.dict2 = ["dos", "2", "tos"];
 		this.dict3 = ["tres", "3", "crees"];
 		
@@ -25,12 +25,12 @@ var Board = function (Language, Chip) {
 		this.dictPause = ["pausa", "va a usar", "va usa"];
 		
 		this.dictContinue = ["continuar"];
-		this.dictExit = ["salir", "salí"];
+		this.dictExit = ["salir", "salí"];*/
 		
-		this.dictRows = [this.dict1, this.dict2, this.dict3];
-		this.dictPlayer = [this.dictHuman, this.dictAIrandom, this.dictAIhard];
-		this.dictPlayMenu = [this.dictHelp, this.dictCheck, this.dictGiveUp, this.dictPause];
-		this.dictPauseMenu = [this.dictContinue, this.dictExit];
+		this.dictRows = [dict1, dict2, dict3];
+		this.dictPlayer = [dictHuman, dictAIrandom, dictAIhard];
+		this.dictPlayMenu = [dictHelp, dictCheck, dictGiveUp, dictPause];
+		this.dictPauseMenu = [dictContinue, dictExit];
 
 	}
 	
@@ -946,6 +946,9 @@ var Board = function (Language, Chip) {
 	
 	this.salute = function() {
 		this.firstQueue = [this.Voice["welcome"]];
+		if (this.language != navigator.language) {
+			this.firstQueue.unshift(this.Voice["no-language"]);
+		}
 		this.audioQueue(this.firstQueue, 100, function() {
 			parentThis.startGameWithVoice();
 		});
@@ -966,22 +969,30 @@ var BoardLoader = function() {
 	//To make sure if this language is ready in our game.
 	//Still useless due to async. I'm sick of JS natural async.
 	this.petition = new XMLHttpRequest();
-	this.petition.open("HEAD", "dict/" + this.language + ".js");
+	this.petition.open("HEAD", "dict/" + this.language + ".js", false);
 	
 	this.petition.send();
 	var status = 1;
 	var preThis = this;
 	
-	var rightTime = setInterval(function () {
-		status = preThis.petition.status;
-		if (status == 200) {
+	this.loadDict = function(lang) {
+		var htmlFather = document.createElement("script");
+		htmlFather.src = "dict/" + lang + ".js";
+		document.body.appendChild(htmlFather);
+	}
+	
+	status = preThis.petition.status;
+	if (status == 404) {
+		this.language = "es";
+	}
+	this.loadDict(this.language);
+	var rightTime = setInterval(function() {
+		console.log(2);
+		if (typeof(dict1) != "undefined") {
 			clearInterval(rightTime);
 			var Tablero1 = new Board(preThis.language);
 		}
-		if (status == 404) {
-			clearInterval(rightTime);
-			var Tablero1 = new Board("es");
-		}
+		
 	}, 60);
 
 }
