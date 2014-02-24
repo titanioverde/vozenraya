@@ -54,7 +54,7 @@ var Board = function (Language, Chip) {
 	}
 		
 	if (this.debug) {
-		this.players = {"B": 0, "W": 2, "set": true}; //0 = human. 1+ = IA.
+		this.players = {"B": 2, "W": 2, "set": true}; //0 = human. 1+ = IA.
 		this.microphoneWorks = true;
 	} else {
 		this.players = {"B": 0, "W": 0, "set": false};
@@ -144,6 +144,12 @@ var Board = function (Language, Chip) {
 			console.log(phrase);
 		}
 	}
+	
+	//To retrieve the current board as a string. Only for debug.
+ 	this.showBoard = function () {
+		var output = String(this.Squares[0]) + "\n" + String(this.Squares[1]) + "\n" + String(this.Squares[2]);
+ 		return (output);
+ 	}
 	
 	//To execute at first if mic wasn't tested before. The user must say three words
 	this.checkMicrophone = function() {
@@ -577,7 +583,6 @@ var Board = function (Language, Chip) {
 			this.Chip = otherChip;
 			this.Color = otherColor;
 		}
-		
 		return [otherChip, otherColor];
 	}
 	
@@ -633,9 +638,11 @@ var Board = function (Language, Chip) {
 	
 	//Here comes auto-business. First list all possibilities, each with a priority. Finally return the better position.
 	this.hardAI = function () {
+		if (this.debug) console.log(this.showBoard());
 		var empties = this.listEmptySquares();
 		var own = this.Chip;
-		var enemy = this.changeTurn(own);
+		var enemy = this.changeTurn(own)[0];
+		if (this.debug) console.log(enemy);
 		var options = []; //[row, square, priority (=< 100)]
 		var destination = [];
 		var maxSquare = this.Squares.length - 1;
@@ -657,9 +664,12 @@ var Board = function (Language, Chip) {
 			if (colors["X"] == 1) {
 				if (this.debug) console.log(colors);
 				if (colors[own] == 2) {
+					if (this.debug) console.log("YESSS!");
 					//Put chip on X. 100.
 					options.push([i, row.indexOf("X"), 100]);
-				} else if (colors[enemy] == 2) {
+				}
+				if (colors[enemy] == 2) {
+					if (this.debug) console.log("I don't think so.");
 					//Put chip on X. 80.
 					options.push([i, row.indexOf("X"), 80]);
 				}
