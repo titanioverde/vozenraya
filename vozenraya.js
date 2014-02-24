@@ -5,33 +5,12 @@ var Board = function (Language, Chip) {
 	this.SoundPath = "sound/";
 	
 	//Enter dictionaries from its respective file.
-	//Yes... inserting them like a script on the document. Or that's what I'd want to.
+	//Yes... from global variables.
 	this.loadDict = function() {
-		/*var htmlFather = document.createElement("script");
-		htmlFather.src = this.dictPath + this.language + ".js";
-		document.body.appendChild(htmlFather);*/
-		
-		/*this.dict1 = ["uno", "1"];
-		this.dict2 = ["dos", "2", "tos"];
-		this.dict3 = ["tres", "3", "crees"];
-		
-		this.dictHelp = ["ayuda"];
-		this.dictHuman = ["humano", "tu mano", "rumano"];
-		this.dictAIrandom = ["aleatorio"];
-		this.dictAIhard = ["difícil", "difísil"];
-		
-		this.dictCheck = ["revisar"];
-		this.dictGiveUp = ["abandonar"];
-		this.dictPause = ["pausa", "va a usar", "va usa"];
-		
-		this.dictContinue = ["continuar"];
-		this.dictExit = ["salir", "salí"];*/
-		
 		this.dictRows = [dict1, dict2, dict3];
 		this.dictPlayer = [dictHuman, dictAIrandom, dictAIhard];
 		this.dictPlayMenu = [dictHelp, dictCheck, dictGiveUp, dictPause];
 		this.dictPauseMenu = [dictContinue, dictExit];
-
 	}
 	
 	//To select the first color, or to pick the default one.
@@ -61,6 +40,7 @@ var Board = function (Language, Chip) {
 	}
 	
 	this.pause = false;
+	this.playing = false;
 	this.microphoneWorks = this.retrieveCookie("microphone") || false;
 	this.failCount = 0;
 	this.micBusy = false;
@@ -130,7 +110,7 @@ var Board = function (Language, Chip) {
 				"credits": new Audio(this.VoicePath + "credits.ogg")
 			}
 		} else {
-			//Not a compatible browser. :-( Better luck after some months.
+			//Not a compatible browser. :-( Try again in some months.
 			this.micBusy = true;
 			var notCompatible = new Audio(this.VoicePath + "not-compatible.ogg");
 			notCompatible.play();
@@ -142,16 +122,26 @@ var Board = function (Language, Chip) {
 	this.recognitionTime = function() {
 		parentThis.micBusy = true;
 		parentThis.Voice["speak-now"].play();
+		
+		//Needed to keep the show on if the mic is stopped accidentally. Specially because of noise.
+		antiFreeze = setTimeout(function() {
+		if (parentThis.pause == false && parentThis.playing == false) {
+			if (parentThis.micBusy) {
+				parentThis.micBusy = false;
+			}
+		}
+	}, 12000);
+
 	}
 	
 	//A generic voice recognition object (despite there are other objects like this later).
 	//Documentation: https://dvcs.w3.org/hg/speech-api/raw-file/tip/speechapi.html
 	this.voiceReceiver = new webkitSpeechRecognition();
-	this.voiceReceiver.lang = "es-ES";
+	this.voiceReceiver.lang = this.language;
 	this.voiceReceiver.onresult = function (event) {
 		if (event.results.length > 0) {
 			phrase = event.results[0][0].transcript;
-			document.getElementById("voiceresult").value = phrase;
+			console.log(phrase);
 		}
 	}
 	
@@ -159,7 +149,7 @@ var Board = function (Language, Chip) {
 	this.checkMicrophone = function() {
 		this.microphoneWorks = false;
 		var voiceTest = new webkitSpeechRecognition();
-		voiceTest.lang = "es-ES";
+		voiceTest.lang = this.language;
 		
 		voiceTest.onresult = function(event) {
 			if (event.results.length > 0) {
@@ -224,7 +214,7 @@ var Board = function (Language, Chip) {
 	this.chooseAI = function() {
 		parentThis.micBusy = true;
 		var anotherVoice = new webkitSpeechRecognition();
-		anotherVoice.lang = "es-ES";
+		anotherVoice.lang = this.language;
 		
 		anotherVoice.onresult = function(event) {
 			if (event.results.length > 0) {
@@ -242,10 +232,6 @@ var Board = function (Language, Chip) {
 					} else {
 						//I'll randomly choose your color.
 						var queue = [parentThis.Voice["choose-ai"], parentThis.Voice[parentThis.changeTurn(partner)[1]]];
-						/*if (choose == 2) {
-							parentThis.players[partner] = 1; //Not implemented yet.
-							queue.unshift(parentThis.Voice["not-implemented"]);
-						}*/
 						parentThis.audioQueue(queue, 100,
 											  function() { parentThis.micBusy = false; parentThis.players["set"] = true; });
 					}
@@ -390,6 +376,7 @@ var Board = function (Language, Chip) {
 		delay = delay || 500;
 		var i = 0;
 		var playNow = function(audio) {
+			parentThis.playing = true;
 			audio.play();
 			i += 1;
 			//Interval to call playNow (yeah, this function) when audio has finished playing.
@@ -405,7 +392,7 @@ var Board = function (Language, Chip) {
 						var waitPlease2 = setInterval(function() {
 							if (audio.ended) {
 								//Is there really no cleaner way to do this?! T_T
-								setTimeout(function() { callback() }, delay);
+								setTimeout(function() { parentThis.playing = false; callback(); }, delay);
 								clearInterval(waitPlease2);
 							}
 						}, 50);
@@ -766,7 +753,7 @@ var Board = function (Language, Chip) {
 	this.turnFlowWithVoiceAuto = function() {
 		var turnResult = "void"; //Default value. This variable will dictate voices played when the turn ends.
 		var anotherVoice = new webkitSpeechRecognition();
-		anotherVoice.lang = "es-ES";
+		anotherVoice.lang = this.language;
 		
 		anotherVoice.onresult = function (event) {
 			if (event.results.length > 0) {
@@ -959,8 +946,6 @@ var Board = function (Language, Chip) {
 	this.loadDict();
 	this.loadVoice();
 	this.salute();
-	
-
 }
 
 var BoardLoader = function() {
@@ -987,14 +972,11 @@ var BoardLoader = function() {
 	}
 	this.loadDict(this.language);
 	var rightTime = setInterval(function() {
-		console.log(2);
 		if (typeof(dict1) != "undefined") {
 			clearInterval(rightTime);
 			var Tablero1 = new Board(preThis.language);
 		}
-		
 	}, 60);
-
 }
 
 //Just create a BoardLoader object, and it will start right away. Like:
