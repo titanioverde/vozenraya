@@ -54,7 +54,7 @@ var Board = function (Language, Chip) {
 	}
 		
 	if (this.debug) {
-		this.players = {"B": 2, "W": 2, "set": true}; //0 = human. 1+ = IA.
+		this.players = {"B": 0, "W": 0, "set": false}; //0 = human. 1+ = IA.
 		this.microphoneWorks = true;
 	} else {
 		this.players = {"B": 0, "W": 0, "set": false};
@@ -98,14 +98,10 @@ var Board = function (Language, Chip) {
 				"tie": new Audio(this.VoicePath + "tie.ogg"),
 				"surrender": new Audio(this.VoicePath + "surrender.ogg"),
 				"busy": new Audio(this.VoicePath + "busy.ogg"),
-				"success": new Audio(this.VoicePath + "success.ogg"),
+				"success": new Audio(this.SoundPath + "success.ogg"),
 				"unheard": new Audio(this.VoicePath + "unheard.ogg"),
 				"silence": new Audio(this.VoicePath + "silence.ogg"),
-				"void": new Audio(this.VoicePath + "void.ogg"),
-				"general-help": new Audio(this.VoicePath + "general-help.ogg"),
-				"put-help": new Audio(this.VoicePath + "put-help.ogg"),
-				"available-actions": new Audio(this.VoicePath + "available-actions.ogg"),
-				"play-menu": new Audio(this.VoicePath + "play-menu.ogg"),
+				"void": new Audio(this.SoundPath + "void.ogg"),
 				"not-implemented": new Audio(this.VoicePath + "not-implemented.ogg"),
 				"credits": new Audio(this.VoicePath + "credits.ogg")
 			}
@@ -124,13 +120,17 @@ var Board = function (Language, Chip) {
 		parentThis.Voice["speak-now"].play();
 		
 		//Needed to keep the show on if the mic is stopped accidentally. Specially because of noise.
-		antiFreeze = setTimeout(function() {
-		if (parentThis.pause == false && parentThis.playing == false) {
-			if (parentThis.micBusy) {
-				parentThis.micBusy = false;
+		var antiFreeze = setTimeout(function() {
+			if (parentThis.debug) console.log("pause: " + parentThis.pause + " playing: " + parentThis.playing + " micBusy: " + parentThis.micBusy);
+			if (parentThis.playing) {
+				clearTimeout(antiFreeze);
 			}
-		}
-	}, 12000);
+			if (parentThis.pause == false && parentThis.playing == false) {
+				if (parentThis.micBusy) {
+					parentThis.micBusy = false;
+				}
+			}
+		}, 10050);
 
 	}
 	
@@ -170,7 +170,7 @@ var Board = function (Language, Chip) {
 					queue = [parentThis.Voice["check-mic-ok"],
 							 parentThis.Voice["instructions"]];
 				}
-				parentThis.audioQueue(queue, 100, function() { parentThis.micBusy = false; });
+				parentThis.audioQueue(queue, 100, false, function() { parentThis.micBusy = false; });
 				//Play those voice samples, and free mic when finished.
 			}
 		}
@@ -178,19 +178,20 @@ var Board = function (Language, Chip) {
 		voiceTest.onerror = function(event) {
 			if (event.error == "no-speech" && parentThis.failCount < 3) {
 				parentThis.failCount += 1;
-				parentThis.audioQueue([parentThis.Voice["silence"]], 100, function() { parentThis.micBusy = false; });
+				parentThis.audioQueue([parentThis.Voice["silence"]], 100, false, function() { parentThis.micBusy = false; });
 			}
 		}
 		
 		voiceTest.addEventListener('start', this.recognitionTime, false);
 		
+		
 		//First let's play the instructions, and then do all the action and open the mic.
-		this.audioQueue([this.Voice["check-mic"]], 200, function() {
+		this.audioQueue([this.Voice["check-mic"]], 200, false, function() {
 			var forTheCheck = setInterval(function() {
 				if (parentThis.microphoneWorks == false) {
 					if (parentThis.micBusy == false) {
 						if (parentThis.failCount >= 3) { //Too much recognition errors? I quit.
-							parentThis.audioQueue([parentThis.Voice["not-working"]], 1);
+							parentThis.audioQueue([parentThis.Voice["not-working"]], 1, false);
 							document.cookie = "microphone=false;max-age=1";
 							clearInterval(forTheCheck);
 						} else { //Start!
@@ -233,12 +234,12 @@ var Board = function (Language, Chip) {
 					if (choose == 0) {
 						//Humans, choose a color in 5 seconds. Blacks start first.
 						var queue = [parentThis.Voice["choose-human"], parentThis.Voice["first-blacks"], parentThis.Voice["5-seconds"]];
-						parentThis.audioQueue(queue, 100,
+						parentThis.audioQueue(queue, 90, false,
 											  function() { parentThis.micBusy = false; parentThis.players["set"] = true; });
 					} else {
 						//I'll randomly choose your color.
 						var queue = [parentThis.Voice["choose-ai"], parentThis.Voice[parentThis.changeTurn(partner)[1]]];
-						parentThis.audioQueue(queue, 100,
+						parentThis.audioQueue(queue, 90, false,
 											  function() { parentThis.micBusy = false; parentThis.players["set"] = true; });
 					}
 					parentThis.players["set"] = true;
@@ -249,7 +250,7 @@ var Board = function (Language, Chip) {
 		anotherVoice.onerror = function(event) {
 			if (event.error == "no-speech" && parentThis.failCount < 3) {
 				parentThis.failCount += 1;
-				parentThis.audioQueue([parentThis.Voice["silence"]], 100, function() { parentThis.micBusy = false; });
+				parentThis.audioQueue([parentThis.Voice["silence"]], 100, false, function() { parentThis.micBusy = false; });
 			}
 		}
 		
@@ -261,7 +262,7 @@ var Board = function (Language, Chip) {
 			var menu = "choose-player";
 		}
 		
-		this.audioQueue([this.Voice[menu]], 100, function() {
+		this.audioQueue([this.Voice[menu]], 100, false, function() {
 			anotherVoice.start();
 			var forTheCheck = setInterval(function() {
 				if (parentThis.players["set"] == false) {
@@ -271,7 +272,7 @@ var Board = function (Language, Chip) {
 				} else {
 					clearInterval(forTheCheck);
 				}
-			}, 100);
+			}, 1303);
 		});
 	}
 	
@@ -357,7 +358,7 @@ var Board = function (Language, Chip) {
 			return queue;
 		} else {
 			//To play right now.
-			this.audioQueue(queue, 200);
+			this.audioQueue(queue, 200, true);
 		}
 		return 0;
 	}
@@ -378,17 +379,22 @@ var Board = function (Language, Chip) {
 	
 	//Main and wonderful function to orderly play audio samples.
 	//It will execute another function when finished (callback) if specified. 
-	this.audioQueue = function(queue, delay, callback) {
+	this.audioQueue = function(queue, delay, randomRate, callback) {
 		delay = delay || 500;
+		randomRate = randomRate || false;
+		//parentThis.micBusy = false;
 		var i = 0;
 		var playNow = function(audio) {
 			parentThis.playing = true;
+			if (randomRate) audio.playbackRate = 0.8 + Math.random() * 0.4;
 			audio.play();
+			if (parentThis.debug) console.log(audio.playbackRate);
 			i += 1;
 			//Interval to call playNow (yeah, this function) when audio has finished playing.
 			var waitPlease = setInterval(function() {
 				if (i < queue.length) {
 					if (audio.ended) {
+						audio.playbackRate = 1;
 						setTimeout(function() { playNow(queue[i]) }, delay);
 						clearInterval(waitPlease);
 					}
@@ -398,6 +404,7 @@ var Board = function (Language, Chip) {
 						var waitPlease2 = setInterval(function() {
 							if (audio.ended) {
 								//Is there really no cleaner way to do this?! T_T
+								audio.playbackRate = 1;
 								setTimeout(function() { parentThis.playing = false; callback(); }, delay);
 								clearInterval(waitPlease2);
 							}
@@ -802,7 +809,7 @@ var Board = function (Language, Chip) {
 		var waitPlease = setInterval(function () {
 			if (parentThis.micBusy == false && parentThis.pause == false) { //Game started or microphone finished. Come.
 				if (parentThis.failCount >= 4) { //Too many recognition errors. Quit loop and, therefore, application.
-						parentThis.audioQueue([parentThis.Voice["not-working"]], 1);
+						parentThis.audioQueue([parentThis.Voice["not-working"]], 1, false);
 						document.cookie = "microphone=false;max-age=1"; //Make sure to check mic the next time.
 						clearInterval(waitPlease);
 				} else {
@@ -842,10 +849,9 @@ var Board = function (Language, Chip) {
 					voiceQueue.push(parentThis.Voice[parentThis.Color]);
 					
 					//Now play everything. Later listen to the mic, or get the AI working, to put the next chip.
-					parentThis.audioQueue(voiceQueue, 200, function() {
+					parentThis.audioQueue(voiceQueue, 80, true, function() {
 						switch (parentThis.players[parentThis.Chip]) {
 							case 0: //Human.
-								//parentThis.Voice["speak-now"].play();
 								anotherVoice.start();
 								break;
 							case 1: //Random.
@@ -909,7 +915,7 @@ var Board = function (Language, Chip) {
 			}
 		}
 		
-		this.audioQueue([this.Voice["pause"]], 100, function() {
+		this.audioQueue([this.Voice["pause"]], 100, false, function() {
 			parentThis.micBusy = true;
 			voicePause.start();
 		});
@@ -924,20 +930,20 @@ var Board = function (Language, Chip) {
 		var playersChosen = setInterval(function() {
 			if (parentThis.microphoneWorks) {
 				if (parentThis.players["set"] == false) {
-					if (parentThis.micBusy == false) {
+					if (parentThis.micBusy == false && parentThis.playing == false) {
 						parentThis.chooseAI();
 					}
 				} else {
 					clearInterval(playersChosen);
 				}
 			}
-		}, 250);
+		}, 1300);
 		var letsPlay = setInterval(function() {
 			if (parentThis.microphoneWorks && parentThis.players["set"]) {
 				parentThis.turnFlowWithVoiceAuto(); //All done.
 				clearInterval(letsPlay);
 			}
-		}, 300);
+		}, 1000);
 		
 	}
 	
@@ -946,7 +952,7 @@ var Board = function (Language, Chip) {
 		if (this.language != navigator.language) {
 			this.firstQueue.unshift(this.Voice["no-language"]);
 		}
-		this.audioQueue(this.firstQueue, 100, function() {
+		this.audioQueue(this.firstQueue, 100, false, function() {
 			parentThis.startGameWithVoice();
 		});
 
