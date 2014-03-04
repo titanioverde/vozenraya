@@ -136,14 +136,14 @@ var Board = function (Language, Chip) {
 	
 	//A generic voice recognition object (despite there are other objects like this later).
 	//Documentation: https://dvcs.w3.org/hg/speech-api/raw-file/tip/speechapi.html
-	this.voiceReceiver = new webkitSpeechRecognition();
+	/*this.voiceReceiver = new webkitSpeechRecognition();
 	this.voiceReceiver.lang = this.language;
 	this.voiceReceiver.onresult = function (event) {
 		if (event.results.length > 0) {
 			phrase = event.results[0][0].transcript;
 			console.log(phrase);
 		}
-	}
+	}*/
 	
 	//To retrieve the current board as a string. Only for debug.
  	this.showBoard = function () {
@@ -472,24 +472,6 @@ var Board = function (Language, Chip) {
 				}
 			}
 		}
-		
-		//A failed attempt to work on bigger boards. Would this kind of game be playable in bigger boards?
-		/*for (var Row = 0; Row < Squares.length; Row++) {
-			var content = this.horizontalLine(Row);
-			var firstColor = content[0];
-			if (firstColor == "X") {
-				continue;
-			}
-			var success = true;
-			for (var Square = 0; Square < Row.length; Square++) {
-				if (Row[Square] != firstColor) {
-					success = false;
-				}
-			}
-			if (success) {
-				return "horizontal";
-			}
-		}*/
 		
 		//Vertical
 		for (var Column in [0, 1, 2]) {
@@ -968,7 +950,7 @@ var BoardLoader = function() {
 	this.language = navigator.language;
 	
 	//To make sure if this language is ready in our game.
-	//Still useless due to async. I'm sick of JS natural async.
+	//Tries to load its recognition dictionary.
 	this.petition = new XMLHttpRequest();
 	this.petition.open("HEAD", "dict/" + this.language + ".js", false);
 	
@@ -983,12 +965,12 @@ var BoardLoader = function() {
 	}
 	
 	status = preThis.petition.status;
-	if (status == 404) {
-		this.language = "es";
+	if (status == 404) { //If fail, load the default language.
+		this.language = "es"; //<-- Default language. You can change this in the future.
 	}
 	this.loadDict(this.language);
 	var rightTime = setInterval(function() {
-		if (typeof(dict1) != "undefined") {
+		if (typeof(dict1) != "undefined") { //Check finished.
 			clearInterval(rightTime);
 			var Tablero1 = new Board(preThis.language);
 		}
@@ -997,3 +979,5 @@ var BoardLoader = function() {
 
 //Just create a BoardLoader object, and it will start right away. Like:
 //var Tablero0 = new BoardLoader();
+//One last note: its html page should be loaded through HTTPS. Chrome (and probably other browsers in the future)
+//will ask for mic capture permission every time on normal HTTP.
