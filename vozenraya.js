@@ -35,17 +35,18 @@ var Board = function (Language, Chip) {
 	}
 	
 	//Returns a cookie value. Code taken from https://developer.mozilla.org/en-US/docs/Web/API/document.cookie
+	//ToDo: Going to delete this thanks to localStorage.
 	this.retrieveCookie = function(key) {
 		return decodeURIComponent(document.cookie.replace(new RegExp("(?:(?:^|.*;)\\s*" + encodeURIComponent(key).replace(/[\-\.\+\*]/g, "\\$&") + "\\s*\\=\\s*([^;]*).*$)|^.*$"), "$1")) || null;
 	}
 	
 	this.pause = false;
 	this.playing = false;
-	this.microphoneWorks = this.retrieveCookie("microphone") || false;
+	this.microphoneWorks = localStorage.getItem("microphone") || 0;
 	this.failCount = 0;
 	this.micBusy = false;
 	this.lastWinner = ["X", 0];
-	this.gamesSum = parseInt(this.retrieveCookie("gamesSum")) || 0;
+	this.gamesSum = parseInt(localStorage.getItem("gamesSum")) || 0;
 	
 	if (this.gamesSum >= 10) {
 		this.fastGame = true;
@@ -166,7 +167,7 @@ var Board = function (Language, Chip) {
 					parentThis.failCount += 1;
 				} else { //All clear.
 					parentThis.microphoneWorks = true;
-					document.cookie = "microphone=true; max-age=2592000";
+					localStorage.setItem("microphone", 1);
 					queue = [parentThis.Voice["check-mic-ok"],
 							 parentThis.Voice["instructions"]];
 				}
@@ -192,7 +193,7 @@ var Board = function (Language, Chip) {
 					if (parentThis.micBusy == false) {
 						if (parentThis.failCount >= 3) { //Too much recognition errors? I quit.
 							parentThis.audioQueue([parentThis.Voice["not-working"]], 1, false);
-							document.cookie = "microphone=false;max-age=1";
+							localStorage.setItem("microphone", 0);
 							clearInterval(forTheCheck);
 						} else { //Start!
 							voiceTest.start();
@@ -792,7 +793,7 @@ var Board = function (Language, Chip) {
 			if (parentThis.micBusy == false && parentThis.pause == false) { //Game started or microphone finished. Come.
 				if (parentThis.failCount >= 4) { //Too many recognition errors. Quit loop and, therefore, application.
 						parentThis.audioQueue([parentThis.Voice["not-working"]], 1, false);
-						document.cookie = "microphone=false;max-age=1"; //Make sure to check mic the next time.
+						localStorage.setItem("microphone", 0); //Make sure to check mic the next time.
 						clearInterval(waitPlease);
 				} else {
 					parentThis.micBusy = true; //While true, speech rec won't start again.
@@ -859,8 +860,8 @@ var Board = function (Language, Chip) {
 	//Some cookie work...
 	this.gameFinished = function() {
 		this.gamesSum += 1;
-		document.cookie = "gamesSum=" + this.gamesSum + ";max-age=2592000";
-		document.cookie = "microphone=true; max-age=2592000";
+		localStorage.setItem("gamesSum", this.gamesSum);
+		localStorage.setItem("microphone", 1);
 	}
 	
 	

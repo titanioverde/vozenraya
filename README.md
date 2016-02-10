@@ -2,6 +2,7 @@ vozenraya
 =========
 
 Tres En Raya controlable por voz mediante navegador. Apto para personas con discapacidad visual.
+Se puede jugar la versión estable en: http://titanioverde.net/vozenraya
 
 Programado puramente en Javascript. Como motor de reconocimiento uso el propio de Google. Desde Chrome puede ser tan fácil como generar un objeto webkitSpeechRecognition. Con cierta orden, el navegador captura el micrófono hasta que detecta una pausa o llega a un límite de tiempo, comprime este fragmento de audio en FLAC, lo envía a los servidores de Google, ahí se convierte a texto y en el navegador se recibe como otro objeto Javascript. Y así hasta que otros navegadores incluyan sus propios mecanismos.
 Información semi-oficial: http://updates.html5rocks.com/2013/01/Voice-Driven-Web-Apps-Introduction-to-the-Web-Speech-API
