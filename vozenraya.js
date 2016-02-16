@@ -152,6 +152,36 @@ var Board = function (Language, Chip) {
  		return (output);
  	}
 	
+	this.checkMicrophoneStart = function() {
+		queue = [];
+		this.microphoneWorks = false;
+		var checkMicRecog = new webkitSpeechRecognition();
+		checkMicRecog.lang = this.language;
+		
+		checkMicRecog.onresult = function(event) {
+			if (event.results.length > 0) {
+				phrase = event.results.length[0][0].transcript;
+				results = parentThis.recognizePosition(phrase);
+				if (results.indexOf(-1) > -1) {
+					queue = [parentThis.Voice["check-mic-fail"]];
+					parentThis.failCount += 1;
+				} else {
+					parentThis.microphoneWorks = true;
+					localStorage.setItem("microphone", 1);
+					queue = [parentThis.Voice["check-mic-ok"],
+							 parentThis.Voice["instructions"]];
+				}
+			}
+			audioQueue(queue, 100, false, function() {
+				parentThis.micBusy = false; //Why the hell? Continue from here.
+			});
+		}
+	}
+	
+	this.checkMicrophoneContinue = function() {
+		
+	}
+	
 	//To execute at first if mic wasn't tested before. The user must say three words
 	this.checkMicrophone = function() {
 		this.microphoneWorks = false;
@@ -378,9 +408,38 @@ var Board = function (Language, Chip) {
 		return queue; //Just a string array. But they're names appearing in Voice list.
 	}
 	
+	this.audioQueue = function(queue, delay, randomRate, callback) {
+		delay = delay || 500;
+		randomRate = randomRate || false;
+		
+		var waitPlease = function() {
+			queue[0].removeEventListener("ended", waitPlease, false);
+			queue[0].playbackRate = 1;
+			queue.shift();
+			
+			if (queue.length > 0) {
+				queue[0].addEventListener("ended", waitPlease, false);
+				if (randomRate) queue[0].playbackRate = 0.8 + Math.random() * 0.4;
+				setTimeout(function() { queue[0].play() }, delay);
+			} else {
+				setTimeout(function() { parentThis.playing = false; callback(); }, delay);
+			}
+		}
+		
+		var playNow = function() {
+			parentThis.playing = true;
+			if (randomRate) queue[0].playbackRate = 0.8 + Math.random() * 0.4;
+			queue[0].addEventListener("ended", waitPlease, false);
+			queue[0].play();
+			
+		}
+		
+		playNow(queue[0]);
+	}
+	
 	//Main and wonderful function to orderly play audio samples.
 	//It will execute another function when finished (callback) if specified. 
-	this.audioQueue = function(queue, delay, randomRate, callback) {
+	this.audioQueueTimeouts = function(queue, delay, randomRate, callback) {
 		delay = delay || 500;
 		randomRate = randomRate || false;
 		//parentThis.micBusy = false;
@@ -748,6 +807,9 @@ var Board = function (Language, Chip) {
 		return output;
 	}
 	
+	this.turnFlowWithEvents = function() {
+		
+	}
 
 	//The current core of voice play.
 	this.turnFlowWithVoiceAuto = function() {
@@ -789,7 +851,7 @@ var Board = function (Language, Chip) {
 		anotherVoice.addEventListener('start', this.recognitionTime, false);
 		
 		//Mandatory timed loop to work over Javascript asynchronous nature. Deal with it (until I know a cleaner way).
-		var waitPlease = setInterval(function () {
+		waitPlease = setInterval(function () {
 			if (parentThis.micBusy == false && parentThis.pause == false) { //Game started or microphone finished. Come.
 				if (parentThis.failCount >= 4) { //Too many recognition errors. Quit loop and, therefore, application.
 						parentThis.audioQueue([parentThis.Voice["not-working"]], 1, false);
