@@ -34,6 +34,11 @@ var Board = function (Language, Chip) {
 		this.debug = false;
 	}
 	
+	//An alias for SpeechRecognition class, waiting for it to be cross-browser.
+	//ToDo: add browser cases.
+	this.Recog = webkitSpeechRecognition;
+	//Add event to the prototype?
+	
 	//Returns a cookie value. Code taken from https://developer.mozilla.org/en-US/docs/Web/API/document.cookie
 	//ToDo: Going to delete this thanks to localStorage.
 	this.retrieveCookie = function(key) {
@@ -155,7 +160,7 @@ var Board = function (Language, Chip) {
 	this.checkMicrophoneStart = function() {
 		queue = [];
 		this.microphoneWorks = false;
-		var checkMicRecog = new webkitSpeechRecognition();
+		var checkMicRecog = new this.Recog();
 		checkMicRecog.lang = this.language;
 		
 		checkMicRecog.onresult = function(event) {
@@ -174,12 +179,9 @@ var Board = function (Language, Chip) {
 			}
 			audioQueue(queue, 100, false, function() {
 				parentThis.micBusy = false; //Why the hell? Continue from here.
+				checkMicRecog = null;
 			});
 		}
-	}
-	
-	this.checkMicrophoneContinue = function() {
-		
 	}
 	
 	//To execute at first if mic wasn't tested before. The user must say three words
@@ -251,7 +253,7 @@ var Board = function (Language, Chip) {
 	//Interactive menu. Human or AI level.
 	this.chooseAI = function() {
 		parentThis.micBusy = true;
-		var anotherVoice = new webkitSpeechRecognition();
+		var anotherVoice = new this.Recog();
 		anotherVoice.lang = this.language;
 		
 		anotherVoice.onresult = function(event) {
@@ -266,12 +268,12 @@ var Board = function (Language, Chip) {
 						//Humans, choose a color in 5 seconds. Blacks start first.
 						var queue = [parentThis.Voice["choose-human"], parentThis.Voice["first-blacks"], parentThis.Voice["5-seconds"]];
 						parentThis.audioQueue(queue, 90, false,
-											  function() { parentThis.micBusy = false; parentThis.players["set"] = true; });
+											  function() { parentThis.micBusy = false; parentThis.players["set"] = true; parentThis.turnFlowWithEvents(); });
 					} else {
 						//I'll randomly choose your color.
 						var queue = [parentThis.Voice["choose-ai"], parentThis.Voice[parentThis.changeTurn(partner)[1]]];
 						parentThis.audioQueue(queue, 90, false,
-											  function() { parentThis.micBusy = false; parentThis.players["set"] = true; });
+											  function() { parentThis.micBusy = false; parentThis.players["set"] = true; parentThis.turnFlowWithEvents(); });
 					}
 					parentThis.players["set"] = true;
 				}
@@ -291,6 +293,10 @@ var Board = function (Language, Chip) {
 			var menu = "choose-player-fast";
 		} else {
 			var menu = "choose-player";
+		}
+		
+		endedVoice = function(event) {
+			
 		}
 		
 		this.audioQueue([this.Voice[menu]], 100, false, function() {
@@ -808,7 +814,99 @@ var Board = function (Language, Chip) {
 	}
 	
 	this.turnFlowWithEvents = function() {
+		var turnResult = "void";
+		var flowRecog = new this.Recog();
+		flowRecog.lang = this.language;
 		
+		flowRecog.onresult = function(event) {
+			if (event.results.length > 0) {
+				phrase1 = event.results[0][0].transcript;
+				Target1 = parentThis.recognizePosition(phrase1);
+				if (Target1.length > 1) {
+					if (!(Target1[0] == -1 || Target1[1] == -1)) {
+						turnResult = parentThis.basicTurnFlowWithReturn(Target1);
+					}
+				} else { //They're not numbers!!
+					var command = parentThis.compareCommand(phrase1);
+					if (command != "") {
+						turnResult = parentThis.commandPlayMenu(command);
+					} else { //Command or position not recognized.
+						parentThis.failCount += 1;
+						turnResult = "unheard";
+					}
+				}
+				
+				parentThis.micBusy = false;
+			}
+		}
+		
+		flowRecog.onerror = function(event) {
+		}
+		
+		endedRecog = function(event) {
+			if (event.error == "no-speech") {
+				parentThis.failCount += 1;
+				turnResult = "silence";
+				parentThis.micBusy = false;
+				//flowRecog.start();
+			}
+			console.log("ended");
+			if (parentThis.failCount >= 4) {
+				parentThis.audioQueue([parentThis.Voice["not-working"]], 1, false);
+				flowRecog = null;
+			} else {
+				voiceQueue = [];
+				if (["Array", "object"].indexOf(typeof(turnResult)) > -1) {
+					for (var i in turnResult) {
+						voiceQueue.push(parentThis.Voice[turnResult[i]]);
+					}
+				} else {
+					voiceQueue.push(parentThis.Voice[turnResult]);
+				}
+				if (["vertical", "horizontal", "diagonal"].indexOf(turnResult[2]) > -1) {
+					var otherColor = parentThis.changeTurn(true)[1];
+					voiceQueue.push(parentThis.Voice[otherColor]);
+					parentThis.gameFinished();
+					if (parentThis.gameSum == 10) {
+						parentThis.fastGame = true;
+						voiceQueue.push(parentThis.Voice["credits"]);
+					}
+					voiceQueue.push(parentThis.Voice["start"]);
+				}
+				
+				if ("tie" == turnResult[2]) {
+					parentThis.gameFinished();
+					if (parentThis.gameSum == 10) {
+						parentThis.fastGame = true;
+						voiceQueue.push(parentThis.Voice["credits"]);
+					}
+					voiceQueue.push(parentThis.Voice["start"]);
+				}
+				
+				voiceQueue.push(parentThis.Voice["turnfor"]);
+				voiceQueue.push(parentThis.Voice[parentThis.Color]);
+				
+				parentThis.audioQueue(voiceQueue, 80, true, function() {
+					switch (parentThis.players[parentThis.Chip]) {
+						case 0: //Human
+							flowRecog.start();
+							break;
+						case 1: //Random
+							Target = parentThis.randomAI();
+							turnResult = parentThis.basicTurnFlowWithReturn(Target);
+							break;
+						case 2: //Hard
+							Target = parentThis.hardAI();
+							turnResult = parentThis.basicTurnFlowWithReturn(Target);
+							break;
+					}
+				});	
+			}
+		}
+		
+		flowRecog.addEventListener("ended", endedRecog, false); //Those events are not for SpeechRecog. Try other ones.
+		flowRecog.addEventListener("error", endedRecog, false);
+		this.audioQueue([this.Voice["start"], this.Voice["turnfor"], this.Voice[this.Color]], 80, true, function() { flowRecog.start(); });
 	}
 
 	//The current core of voice play.
@@ -985,7 +1083,7 @@ var Board = function (Language, Chip) {
 		}, 1300);
 		var letsPlay = setInterval(function() {
 			if (parentThis.microphoneWorks && parentThis.players["set"]) {
-				parentThis.turnFlowWithVoiceAuto(); //All done.
+				//parentThis.turnFlowWithEvents(); //All done.
 				clearInterval(letsPlay);
 			}
 		}, 1000);
