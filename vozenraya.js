@@ -396,8 +396,8 @@ var Board = function (Language, Chip) {
 	this.audioQueue = function(queue, delay, randomRate, callback) {
 		delay = delay || 500;
 		randomRate = randomRate || false;
-		if (parentThis.debug) console.log(callback);
-		if (parentThis.debug) console.log(queue);
+		//if (parentThis.debug) console.log(callback);
+		//if (parentThis.debug) console.log(queue);
 		
 		var waitPlease = function() {
 			queue[0].removeEventListener("ended", waitPlease, false);
@@ -744,9 +744,15 @@ var Board = function (Language, Chip) {
 		parentThis.audioQueue([parentThis.Voice["start"], parentThis.Voice["turnfor"], parentThis.Voice[parentThis.Color]], 80, true, function() { parentThis.nextTurn(); });
 	}
 	
+	this.gameRecogSilence = function(event) {
+		if (parentThis.debug) console.log(event);
+		parentThis.audioQueue([parentThis.Voice["silence"]], 50, true, function() { parentThis.gameRecog.start(); });
+	}
+	
 	//Let's process voice commands.
 	this.gameRecogResult = function(event) {
 		//parentThis.gameRecog.abort();
+		if (parentThis.debug) console.log(event);
 		turnResult = "void";
 		if (event.results.length > 0) {
 			phrase1 = event.results[0][0].transcript;
@@ -769,6 +775,7 @@ var Board = function (Language, Chip) {
 		} else {
 			parentThis.failCount += 1;
 			turnResult = "no-speech";
+			
 		}
 		parentThis.gameRecogResultCheck(turnResult);
 	};
@@ -807,6 +814,10 @@ var Board = function (Language, Chip) {
 				voiceQueue.push(parentThis.Voice["start"]);
 			}
 			
+			if (turnResult == "no-speech") {
+				voiceQueue.push(parentThis.Voice["silence"]);
+			}
+			
 			voiceQueue.push(parentThis.Voice["turnfor"]);
 			voiceQueue.push(parentThis.Voice[parentThis.Color]);
 			
@@ -836,6 +847,8 @@ var Board = function (Language, Chip) {
 	this.gameRecog = new this.Recog();
 	this.gameRecog.lang = this.language;
 	this.gameRecog.onresult = this.gameRecogResult;
+	this.gameRecog.onnomatch = this.gameRecogSilence;
+	this.gameRecog.onerror = this.gameRecogSilence;
 	
 	
 	//Some "cookie" work...
