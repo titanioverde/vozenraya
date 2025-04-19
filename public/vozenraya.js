@@ -6,6 +6,14 @@ var Board = function (Language, Chip) {
 	this.VoicePath = "voice/" + this.language + "/";
 	this.SoundPath = "sound/";
 	
+	if (window.webkitSpeechRecognition == undefined && window.SpeechRecognition == undefined) {
+		//Not a compatible browser. :-( Try again in some months.
+		const notCompatible = new Audio(parentThis.VoicePath + "not-compatible.ogg");
+		notCompatible.play();
+		document.body.appendChild(document.createElement("p")).textContent = "Not compatible browser. Try with Chrome, Edge or Safari.";
+		throw new Error("Not compatible browser. SpeechRecognition API not available. Try with Webkit / Chromium based browsers.");
+	}
+
 	//Enter dictionaries from its respective file.
 	//Yes... from global variables.
 	this.loadDict = function() {
@@ -33,11 +41,6 @@ var Board = function (Language, Chip) {
 	} else {
 		this.debug = false;
 	}
-	
-	//An alias for SpeechRecognition class, waiting for it to be cross-browser.
-	//ToDo: add browser cases.
-	this.Recog = webkitSpeechRecognition;
-	//Add event to the prototype?
 	
 	//Returns a cookie value. Code taken from https://developer.mozilla.org/en-US/docs/Web/API/document.cookie
 	//ToDo: Going to delete this thanks to localStorage.
@@ -111,13 +114,13 @@ var Board = function (Language, Chip) {
 				"not-implemented": new Audio(parentThis.VoicePath + "not-implemented.ogg"),
 				"credits": new Audio(parentThis.VoicePath + "credits.ogg")
 			}
-		} else {
-			//Not a compatible browser. :-( Try again in some months.
-			parentThis.micBusy = true;
-			const notCompatible = new Audio(parentThis.VoicePath + "not-compatible.ogg");
-			notCompatible.play();
 		}
 	}
+	
+	//An alias for SpeechRecognition class, waiting for it to be cross-browser.
+	//ToDo: add browser cases.
+	this.Recog = webkitSpeechRecognition;
+	//Add event to the prototype?
 	
 	//To manually add on the 'start' event of speech recognition objects.
 	//No, I don't want to prototypely add it to every like object.
