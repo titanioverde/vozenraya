@@ -1,7 +1,7 @@
 var Board = function (Language, Chip) {
 	var parentThis = this; //Never forget the main object.
 	
-	this.language = Language || "es";
+	this.language = Language || "es-ES";
 	this.dictPath = "dict/";
 	this.VoicePath = "voice/" + this.language + "/";
 	this.SoundPath = "sound/";
@@ -144,7 +144,6 @@ var Board = function (Language, Chip) {
 		
 
 	}
-	
 	
 	//To retrieve the current board as a string. Only for debug.
  	this.showBoard = function () {
@@ -964,17 +963,41 @@ var BoardLoader = function() {
 	
 	status = preThis.petition.status;
 	if (status == 404) { //If fail, load the default language.
-		this.language = "es"; //<-- Default language. You can change this in the future.
+		this.language = "es-ES"; //<-- Default language. You can change this in the future.
 	}
 	this.loadDict(this.language);
-	var rightTime = setInterval(function() {
-		if (typeof(dict1) != "undefined") { //Check finished.
-			clearInterval(rightTime);
-			var Tablero1 = new Board(preThis.language);
-		}
-	}, 60);
 }
 
+
+const testMicrophonePermissions = function() {
+	const microphoneObject = navigator.mediaDevices
+	  .getUserMedia({ video: false, audio: true })
+	  .then((stream) => {
+		console.log("Permission granted");
+	  })
+	  .catch((err) => {
+		console.error(`you got an error: ${err}`);
+	  });
+	setTimeout(function() {
+		if (microphoneObject) {
+			microphoneObject.stop();
+		}
+	}, 1000);
+}
+
+const PermissionGetter = function() {
+	navigator.permissions.query(
+		{ name: 'microphone' }
+	).then(function(permissionStatus){
+		if (permissionStatus.state != "granted") {
+			testMicrophonePermissions();
+		}
+	});
+}
+
+const startGame = function() {
+	const Tablero1 = new Board();
+}
 //Just create a BoardLoader object, and it will start right away. Like:
 //var Tablero0 = new BoardLoader();
 //One last note: its html page should be loaded through HTTPS. Chrome (and probably other browsers in the future)

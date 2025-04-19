@@ -1,11 +1,14 @@
 # vozenraya
-=========
+
+I don't know if it can run anymore, due to [https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay](browser's security enhancements about audio autoplay).
+Also, I get lost in my own code at every corner, and I can't get the audio queue to work again.
+But I swear this worked like a charm 10 years ago. You can try in a really old version of Chrome.
 
 ## Run
 To run the container in local, based on NGINX Alpine:
 1. Modify the ports in docker-composer.yml if your local HTTP/S ports are busy.
 2. Add your HTTPS certificate keys on the `crt` folder.
-3. `docker build -t fridgejokes-static .`
+3. `docker build -t vozenraya .`
 4. `docker compose up`
 
 Else, you can use any HTTP server of your choice. There are no dependencies, really.

@@ -7,6 +7,11 @@
 <body>
 	<script src='vozenraya.js'></script>
 	<h1>Voz En Raya</h1>
+	<h2>Si no empieza el juego, sigue estos pasos para obtener permisos:</h2>
+	<h3>1. Reproduce este audio.</h3>
+	<audio id="audio_permission" src="sound/speak-now.wav" preload="auto" onclick="PermissionGetter()" preload="auto" controls></audio>
+	<h3>2. Capturar micrófono. <a onclick="PermissionGetter()">Pulsa aquí</a>.</h3>
+	<h3>3. <a onclick="startGame()">Pulsa para comenzar</a></h3>
 	<script>var Tablero0 = new BoardLoader();</script>
 </body>
 </html>
